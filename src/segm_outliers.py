@@ -39,7 +39,7 @@ mask_files = [f for f in os.listdir(mask_directory) if f.startswith(args.startsw
 
 # Function to extract the index from the file name
 def extract_index(filename):
-    match = re.search('_v(\d+)_', filename)
+    match = re.search('_v([0-9]+)_', filename)
     return int(match.group(1)) if match else -1
 
 # Sort the files based on the extracted index
