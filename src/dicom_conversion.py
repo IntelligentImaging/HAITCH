@@ -94,21 +94,34 @@ def main():
     diffusion_matches = ["dti", "DIFFUSION", "DIFF", "diff", "dwi", "DTI", "EPI_highres_with_distortion", "epi_me_128", "dual"]
     fieldmap_matches = ["fieldmap"]
     T2W_matches = ["T2 HASTE", "T2haste", "T2MATCH", "AX_T2_FS", "HASTE"]
+    T1W_matches = ["VIBE"]
+    fmri_matches = ["fmri", "fMRI", "FMRI"]
     Multi_EchoTime=["_me", "echo", "cho" ]
 
     # CHECK FOR SEQUENCE MATCHES
     mri_modality="unknown"
+    seq_name="other"
     if any([x in ds_modality for x in diffusion_matches]):
         if any([x in ds_modality for x in Multi_EchoTime]):
             mri_modality = "dwi_me"
+            seq_name = "dwi_me"
         else:
             mri_modality = "dwi"
+            seq_name = "dwi"
     elif any([x in ds_modality for x in diffusion_matches]):
         mri_modality = "fieldmap"
+        seq_name = "fieldmap"
     elif any([x in ds_modality for x in T2W_matches]):
-        mri_modality="T2W"
+        mri_modality="anat"
+        seq_name="t2w"
+    elif any([x in ds_modality for x in T1W_matches]):
+        mri_modality="anat"
+        seq_name="vibe"
+    elif any([x in ds_modality for x in fmri_matches]):
+        mri_modality="func"
+        seq_name="func"
 
-    fullid = f"{subject_id}_{visit_id}_{mri_modality}_{s_number}"
+    fullid = f"{subject_id}_{visit_id}_{seq_name}_{s_number}"
 
 
     output_directory_mrconvert = os.path.join(args.output_directory, mri_modality, s_number, "mrconvert")
@@ -138,9 +151,13 @@ def main():
         subprocess.run(['dcmdjpeg', input_file, new_file])
 
 
+    # Set dcm2niix convert command
+    # dcm2niix_outputname=f'{subject_id}_{mri_modality}_run-%s_desc-%p_echo-%e'
+    dcm2niix_outputname=f'{subject_id}_{mri_modality}'
+    cmd_dcm2niix = [
+    'dcm2niix', '-z', 'o' , '-w', '0', '-v', '0', dcm2niix_outputname, '-f', fullid, '.nii.gz', '-o', output_directory_dcm2niix, args.input_directory
+    ]
 
-
-    
     if mri_modality.startswith('dwi'):
         print("MRI Modality is :", mri_modality)
         # Convert DWI modality with gradient information
@@ -153,126 +170,129 @@ def main():
         pe_eddy = os.path.join(output_directory_mrconvert, f'{fullid}_pe_eddy.txt')
         
 
-
         # adding '-export_pe_table', pe_table, '-export_pe_eddy', pe_eddy, doesn't work for some data
         cmd_mrconvert = [
-        'mrconvert', '-json_export', json_export, '-export_grad_mrtrix', grad_mrtrix, '-export_grad_fsl',
-        grad_fsl_bvecs, grad_fsl_bvals, tmp_directory, os.path.join(output_directory_mrconvert, f'{fullid}.nii.gz'), '-force'
-        ]
-        
-     
-        # dcm2niix_outputname=f'{subject_id}_{mri_modality}_run-%s_desc-%p_echo-%e'
-        dcm2niix_outputname=f'{subject_id}_{mri_modality}'
-        cmd_dcm2niix = [
-        'dcm2niix', '-z', 'o' , '-w', '0', '-v', '0', dcm2niix_outputname, '-o', output_directory_dcm2niix, args.input_directory
+        'mrconvert', '-clear_property', 'comments', '-json_export', json_export, '-export_grad_mrtrix', grad_mrtrix, '-export_grad_fsl',
+        grad_fsl_bvecs, grad_fsl_bvals, tmp_directory, os.path.join(output_directory_mrconvert, f'{fullid}.nii.gz')#, '-force'
         ]
 
         print(' '.join(cmd_mrconvert))  # Print the command
-        print(' '.join(cmd_dcm2niix))
         subprocess.run(cmd_mrconvert)
+        print(' '.join(cmd_dcm2niix))
         subprocess.run(cmd_dcm2niix)
 
 
-            # Goal is creating the following
+        # Goal is creating the following
         json_file_params = os.path.join(output_directory_mrconvert, f'{fullid}_dMRI_params.json')
         acq_file_dcm2niix = os.path.join(output_directory_dcm2niix, f'{fullid}_acqparams_dcm2niix.txt')
         acq_file_mrconvert = os.path.join(output_directory_mrconvert, f'{fullid}_acqparams_mrconvert.txt')
 
 
         # Read the MRCONVERT JSON file of mrconvert: 
-        with open(json_export) as json_file:
-            data = json.load(json_file)
-
-
-        # Check for the existence of required fields
-        if 'MultibandAccelerationFactor' in data:
-            mb_factor = data['MultibandAccelerationFactor']
+        if not os.path.isfile(json_export):
+            print('JSON export for ' + fullid + 'not found')
         else:
-            mb_factor = None  # Set to None or provide a default value
 
-        if 'SliceEncodingDirection' in data: # Be careful, we don't need this in information : SliceEncodingDirection != PhaseEncodingDirection
-            SliceEncodingDirection = data['SliceEncodingDirection']
-        else:
-            SliceEncodingDirection = None  # Set to None or provide a default value
+            with open(json_export) as json_file:
+                data = json.load(json_file)
 
-        if 'SliceTiming' in data:
-            slice_timing = data['SliceTiming']
-            if slice_timing[0] > slice_timing[1]:
-                slice_order = "even-odd"
+
+            # Check for the existence of required fields
+            if 'MultibandAccelerationFactor' in data:
+                mb_factor = data['MultibandAccelerationFactor']
             else:
-                slice_order = "odd-even"
-        else:
-            slice_timing = None  # Set to None or provide a default value
-            slice_order = None   # Set to None or provide a default value
+                mb_factor = None  # Set to None or provide a default value
 
-        # Create a dictionary to store the specific information
-        specific_info = {
-            'mb_factor': mb_factor,
-            'SliceEncodingDirection': SliceEncodingDirection,
-            'slice_timing': slice_timing,
-            'slice_order': slice_order
-        }
-
-
-        # Write the specific information to the JSON file
-        with open(json_file_params, 'w') as json_file:
-            json.dump(specific_info, json_file)
-
-        with open(pydicom_header, 'w') as f:
-                f.write(str(ds))
-
-
-        ###############
-        # acpparams.txt for topup and eddy
-
-        # assuming 4 echoes
-        echoes = [1 ,2, 3, 4]
-
-        for echo in echoes:
-            json_file = subprocess.check_output(
-                f'find "{output_directory_dcm2niix}" -type f -name "*echo-{echo}*.json"',
-                shell=True, text=True).strip()
-            
-            if not json_file:
-                print(f"No json file found for echo {echo}, skipping")
-                continue
-
-            with open(json_file, "r") as f:
-                json_data = json.load(f)
-            
-            phase_dir = json_data["PhaseEncodingDirection"]
-            readout_time = json_data["TotalReadoutTime"]
-            direction = pow(-1, int(echo) - 1)
-            
-
-            if "j" in phase_dir:
-                with open(acq_file_dcm2niix, "a") as acq_file:
-                    acq_file.write(f"0 {direction} 0 {readout_time}\n")
-            elif "i" in phase_dir:
-                with open(acq_file_dcm2niix, "a") as acq_file:
-                    acq_file.write(f"{direction} 0 0 {readout_time}\n")
-            elif "k" in phase_dir:
-                with open(acq_file_dcm2niix, "a") as acq_file:
-                    acq_file.write(f"0 0 {direction} {readout_time}\n")
+            if 'SliceEncodingDirection' in data: # Be careful, we don't need this in information : SliceEncodingDirection != PhaseEncodingDirection
+                SliceEncodingDirection = data['SliceEncodingDirection']
             else:
-                print("Phase encoding direction not recognized")
-                exit(1)
+                SliceEncodingDirection = None  # Set to None or provide a default value
+
+            if 'SliceTiming' in data:
+                slice_timing = data['SliceTiming']
+                if slice_timing[0] > slice_timing[1]:
+                    slice_order = "even-odd"
+                else:
+                    slice_order = "odd-even"
+            else:
+                slice_timing = None  # Set to None or provide a default value
+                slice_order = None   # Set to None or provide a default value
+
+            # Create a dictionary to store the specific information
+            specific_info = {
+                'mb_factor': mb_factor,
+                'SliceEncodingDirection': SliceEncodingDirection,
+                'slice_timing': slice_timing,
+                'slice_order': slice_order
+            }
 
 
-        # Remove temporary directory
-        subprocess.run(['rm', '-rf', tmp_directory])
+            # Write the specific information to the JSON file
+            # These aren't used for anything. pydicom header stores PHI
+            #with open(json_file_params, 'w') as json_file:
+            #    json.dump(specific_info, json_file)
+
+            #with open(pydicom_header, 'w') as f:
+            #        f.write(str(ds))
+
+
+            ###############
+            # acpparams.txt for topup and eddy
+
+            # assuming 4 echoes
+            echoes = [1 ,2, 3, 4]
+
+            for echo in echoes:
+                json_file = subprocess.check_output(
+                    f'find "{output_directory_dcm2niix}" -type f -name "*echo-{echo}*.json"',
+                    shell=True, text=True).strip()
+                
+                if not json_file:
+                    print(f"No json file found for echo {echo}, skipping")
+                    continue
+
+                with open(json_file, "r") as f:
+                    json_data = json.load(f)
+                
+                phase_dir = json_data["PhaseEncodingDirection"]
+                readout_time = json_data["TotalReadoutTime"]
+                direction = pow(-1, int(echo) - 1)
+                
+
+                if "j" in phase_dir:
+                    with open(acq_file_dcm2niix, "a") as acq_file:
+                        acq_file.write(f"0 {direction} 0 {readout_time}\n")
+                elif "i" in phase_dir:
+                    with open(acq_file_dcm2niix, "a") as acq_file:
+                        acq_file.write(f"{direction} 0 0 {readout_time}\n")
+                elif "k" in phase_dir:
+                    with open(acq_file_dcm2niix, "a") as acq_file:
+                        acq_file.write(f"0 0 {direction} {readout_time}\n")
+                else:
+                    print("Phase encoding direction not recognized")
+                    exit(1)
 
 
     else:
         # Convert other modalities without gradient information
         cmd = [
-        'mrconvert', tmp_directory, os.path.join(output_directory_mrconvert, f'{subject_id}_{mri_modality}_{ds_modality}.nii.gz'), '-force'
+        #'mrconvert', '-clear_property', 'comments', tmp_directory, os.path.join(output_directory_mrconvert, f'{subject_id}_{mri_modality}_{ds_modality}.nii.gz'), '-force'
+        'mrconvert', '-clear_property', 'comments', tmp_directory, os.path.join(output_directory_mrconvert, f'{fullid}.nii.gz'), '-force'
         ]
 
         print(' '.join(cmd))
         subprocess.run(cmd)
 
 
+    # Remove dmcdjpeg temporary directory
+    subprocess.run(['rm', '-rf', tmp_directory])
+
+    # Run dcm2niix for non-DWI
+    print(' '.join(cmd_dcm2niix))
+    subprocess.run(cmd_dcm2niix)
+
+
+print(' ')
         
 if __name__ == '__main__':
     main()
