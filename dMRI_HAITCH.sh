@@ -48,15 +48,15 @@ echo "----------------------------------"
 
 # Define the PP dictionary steps
 declare -A FEDI_DMRI_PIPELINE_STEPS=(
-  [STEP1_DWI_DENOISE_USING_GSVS]="DONE"
-  [STEP2_MRDEGIBBS_RINGING_ARTI]="DONE"
-  [STEP3_RICIAN_BIAS_CORRECTION]="DONE"
-  [STEP4_FETAL_BRAIN_EXTRACTION]="DONE"
-  [STEP5_SPLIT_CROP_SKDATA_MASK]="DONE"
-  [STEP6_SLICECORRECTDISTORTION]="DONE"
-  [STEP7_B1FIELDBIAS_CORRECTION]="DONE"
+  [STEP1_DWI_DENOISE_USING_GSVS]="TODO"
+  [STEP2_MRDEGIBBS_RINGING_ARTI]="TODO"
+  [STEP3_RICIAN_BIAS_CORRECTION]="TODO"
+  [STEP4_FETAL_BRAIN_EXTRACTION]="TODO"
+  [STEP5_SPLIT_CROP_SKDATA_MASK]="TODO"
+  [STEP6_SLICECORRECTDISTORTION]="TODO"
+  [STEP7_B1FIELDBIAS_CORRECTION]="TODO"
   [STEP8_3DSHORE_RECONSTRUCTION]="TODO"
-  [STEP9_REGISTRATION_T2W_ATLAS]="DONE"
+  [STEP9_REGISTRATION_T2W_ATLAS]="TODO"
   [STEP10_TSOR_RESP_FOD_TRACTOG]="DONE"
 )
 
@@ -287,10 +287,12 @@ echo "ECHOTIME (NUMBER_ECHOTIME): $NUMBER_ECHOTIME"
 
 echo "----------------------------------"
 printf "FEDI_DMRI_PIPELINE_STEPS Details:\n\n"
+ranlist="tmp/${RANDOM}.tmp"
 for step in "${!FEDI_DMRI_PIPELINE_STEPS[@]}"; do
-  printf "%s: %s\n" "$step" "${FEDI_DMRI_PIPELINE_STEPS[$step]}"
+  printf "%s: %s\n" "$step" "${FEDI_DMRI_PIPELINE_STEPS[$step]}" >> $ranlist
 done
-
+sort -V $ranlist
+rm $ranlist
 echo "----------------------------------"
 
 
@@ -304,7 +306,7 @@ echo "----------------------------------"
 let STEPX=1
 echo "---------------------------------------------------------------------------------"
 # STEP 1: STEP1_DWI_DENOISE_USING_GSVS
-if [[ $NOLOCKS = 1 && -e ${LOCK1} ]] ; then rm ${LOCK1} ; fi
+if [[ $NOLOCKS = 1 && -e ${LOCK1} && ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] ; then rm ${LOCK1} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] && [[ ! -e ${LOCK1} ]] ; then
 
     touch ${LOCK1}
@@ -336,10 +338,10 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 2: STEP2_MRDEGIBBS_RINGING_ARTI
-if [[ $NOLOCKS = 1 && -e ${LOCK2} ]] ; then rm ${LOCK2} ; fi
+if [[ $NOLOCKS = 1 && -e ${LOCK2} && ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] ; then rm ${LOCK2} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] && [[ ! -e ${LOCK2} ]] ; then
 
-    touch ${LOCK}
+    touch ${LOCK2}
 
     # Kellner et al., 2016
     echo -e "\n ${STEPX}.|--->  Remove Gibbs Ringing Artifacts  ---"
@@ -357,7 +359,7 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 3: STEP3_RICIAN_BIAS_CORRECTION
-if [[ $NOLOCKS = 1 && -e ${LOCK3} ]] ; then rm ${LOCK3} ; fi
+if [[ $NOLOCKS = 1 && -e ${LOCK3} && ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] ; then rm ${LOCK3} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${LOCK3} ]] ; then
 
     touch ${LOCK3}
@@ -398,7 +400,7 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 4: STEP4_FETAL_BRAIN_EXTRACTION
-if [[ $NOLOCKS = 1 && -e ${LOCK4} ]] ; then rm ${LOCK4} ; fi
+if [[ $NOLOCKS = 1 && -e ${LOCK4} && ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] ; then rm ${LOCK4} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] && [[ ! -e ${LOCK4} ]] ; then
 
     touch ${LOCK4}
@@ -434,7 +436,11 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     done
 
     # Fetal brain segmentation
+    echo
+    echo "============ dMRI Segmentation ============"
     SEGMENTATION_METHOD="RAZIEH"
+    echo "Segmentation Method: $SEGMENTATION_METHOD"
+
     # Both scripts segment all 3D volumes in the input path
     if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
 
@@ -447,19 +453,28 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
 	echo "Pulling fetal-bet docker container"
 	docker pull clembet # pull docker image
-	mkdir -v ${OUTPATHSUB}/fetal-bet
-        # cp ${SRC}/fetal-bet/AttUNet.pth ${OUTPATHSUB}/.
-	mpath=`readlink -f ${OUTPATHSUB}`
-        # Estimate Fetal-Bet field
-        docker run -v --rm --mount type=bind,source=${mpath},target=/workspace clembet /bin/bash -c "python /app/src/codes/inference.py --data_path /workspace/segmentation --save_path /workspace/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/fetal-bet/*"
-        # rm ${OUTPATHSUB}/AttUNet.pth
 
-        # rename output files
-	for mask in ${OUTPATHSUB}/fetal-bet/*predicted_mask.nii.gz ; do
+    # make a subdirectory to feed into segmentation code and copy images there
+	mkdir -vp ${OUTPATHSUB}/segmentation/{fetal-bet,inputs}
+    chmod 777 ${OUTPATHSUB}/segmentation/{fetal-bet,inputs}
+    find ${OUTPATHSUB}/segmentation -maxdepth 1 -name working_TE\*z -a ! -name \*mask\* -exec cp {} -vup ${OUTPATHSUB}/segmentation/inputs/ \;
+	mpath=`readlink -f ${OUTPATHSUB}`
+    # Mask dwi with Fetal-BET
+    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace clembet /bin/bash -c \
+    "python /app/src/codes/inference.py --data_path /workspace/segmentation/inputs --save_path /workspace/segmentation/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/fetal-bet/*"
+	echo
+
+    # rename output files
+	echo "moving dwi brain masks to ${SEGMENTATION_DIR}"
+	for mask in ${OUTPATHSUB}/segmentation/fetal-bet/*predicted_mask.nii.gz ; do
 		maskbase=`basename $mask`
-		mv -v $mask ${SEGMENTATION_DIR}/${maskbase%_predicted*}_mask.nii.gz
+		mv $mask ${SEGMENTATION_DIR}/${maskbase%_predicted*}_mask.nii.gz
 	done
-	rmdir -v ${OUTPATHSUB}/fetal-bet
+    if [[ ${OUTPATHSUB}/segmentation/ ]] ; then rm -rf ${OUTPATHSUB}/segmentation/{fetal-bet,inputs} ; fi
+
+    else
+	echo "SEGMENTATION_METHOD specified in $0 is invalid"
+	exit
     fi
 
     # Plot segmentation outliers
@@ -474,7 +489,7 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 5: STEP5_SPLIT_CROP_SKDATA_MASK
-if [[ $NOLOCKS = 1 && -e ${LOCK5} ]] ; then rm ${LOCK5} ; fi
+if [[ $NOLOCKS = 1 && -e ${LOCK5} && ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] ; then rm ${LOCK5} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] && [[ ! -e ${LOCK5} ]] ; then
 
     touch ${LOCK5}
@@ -529,10 +544,10 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
     for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
         TE=$((VIDX % NUMBER_ECHOTIME + 1))
         VNUM=$((VIDX / NUMBER_ECHOTIME))
-        echo "6.I. Crop masks"
+        echo "5.6.I. Crop masks"
         mrgrid -all_axes "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_mask.nii.gz" crop -mask "${SEGMENTATION_DIR}/union_mask_dilated.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -force -quiet
 
-        echo "6.I.1. Ensure even dimension to avoid issues"
+        echo "5.6.I.1. Ensure even dimension to avoid issues"
         NSIZE1TMP=$(mrinfo -size "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -quiet | awk '{print $1}')
         NSIZE2TMP=$(mrinfo -size "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -quiet | awk '{print $2}')
         NSIZE3TMP=$(mrinfo -size "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -quiet | awk '{print $3}')
@@ -568,7 +583,7 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 6: STEP6_SLICECORRECTDISTORTION
-if [[ $NOLOCKS = 1 && -e ${LOCK6} ]] ; then rm ${LOCK6} ; fi
+if [[ $NOLOCKS = 1 && -e ${LOCK6} && ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] ; then rm ${LOCK6} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $DWIMODALITY == "dwiME" ]] && [[ $NUMBER_ECHOTIME -gt 1 ]] && [[ ! -e ${LOCK6} ]] ; then
 
     # Check if VOLUME TO VOLUME DISOTRITON CORRECTION IS SIMILAR to SLICE TO SLICE
@@ -1423,7 +1438,7 @@ elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]]
 
     #touch ${DISTORTIONCO_DIR}/lock
     touch ${LOCK6}
-
+    echo "${STEPX}.|---> Distortion Correction   ---"
     echo -e "\nNo 2nd TE is available ==> No Distortion Correction will be done."
     # mrconvert "${OUTPATHSUB}/${DCPREFIX}.mif" "${OUTPATHSUB}/dwiprebc_TE1.mif" -force
     # mrconvert "${PRPROCESSING_DIR}/union_maskcrop.nii.gz" "${OUTPATHSUB}/dwiprebc_mask_TE1.nii.gz" -force
@@ -1440,7 +1455,7 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 7: STEP7_B1FIELDBIAS_CORRECTION
-if [[ $NOLOCKS = 1 && -e ${LOCK7} ]] ; then rm ${LOCK7} ; fi
+if [[ $NOLOCKS = 1 && -e ${LOCK7} && ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] ; then rm ${LOCK7} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] && [[ ! -e ${LOCK7} ]] ; then
 
     touch ${LOCK7}
@@ -1565,7 +1580,7 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 8: STEP8_3DSHORE_RECONSTRUCTION
-if [[ $NOLOCKS = 1 && -e ${LOCK8} ]] ; then rm ${LOCK8} ; fi
+if [[ $NOLOCKS = 1 && -e ${LOCK8} && ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] ; then rm ${LOCK8} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] && [[ ! -e ${LOCK8} ]]; then
 
     echo -e "\n ${STEPX}.|--->  3D SHORE RECONSTRUCTION   ---"
@@ -1590,7 +1605,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
 
     elif [[ ${NUMBER_ECHOTIME} -gt 1 ]]; then
 
-        "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI}" \
+        python "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI}" \
                                         --bvals "${BVALS}" \
                                         --bvecs "${BVECS}" \
                                         --grads "${GRAD4CLS}" \
@@ -1761,10 +1776,11 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 9: STEP9_REGISTRATION_T2W_ATLAS
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ -e ${MOTIONCORREC_DIR}/spred5.nii.gz ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP9_REGISTRATION_T2W_ATLAS || $NOLOCKS = 1 ]]; then
+if [[ $NOLOCKS = 1 && -e ${LOCK9} && ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] ; then rm ${LOCK9} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ -e ${MOTIONCORREC_DIR}/spred5.nii.gz ]] && [[ ! -e ${LOCK9} ]]; then
 
     echo " ${STEPX}.|---> Registration to T2W and Atlas"
-    touch ${LOCKED_STEPS_DIR}/lock_STEP9_REGISTRATION_T2W_ATLAS
+    touch ${LOCK9}
 
     # bvals and bvecs for different TE
     if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
@@ -1777,25 +1793,18 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
 
     if [[ -e ${FILES[0]} ]] && [[ -e "${BVALSTE}" ]]; then
 
-        T2W_SEGMENTATION_METHOD="SVRTK"
-        T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_t2w-t2space.nii.gz"
-        T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/struct/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_t2w.nii.gz"
-        XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_from-t2space_to-atlas.tfm"
-
-        if [ -e $T2W_ATLAS_SPACE ] && [ -e $XFM ]; then
-            echo "T2W data reconstructed using ${T2W_SEGMENTATION_METHOD}"
-        else
-
-            T2W_SEGMENTATION_METHOD="niftymic"
-            T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_t2w-t2space.nii.gz"
-            T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/struct/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_t2w.nii.gz"
-            XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_from-t2space_to-atlas.tfm"
-            echo "T2W data reconstructed using ${T2W_SEGMENTATION_METHOD}"
-        fi
+        T2W_RECON_METHOD="SVRTK"
+        T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.nii.gz"
+        T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/struct/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w.nii.gz"
+        XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_from-t2space_to-atlas.tfm"
 
         cp ${T2W_ORIGIN_SPACE} ${T2WXFM_FILES_DIR}/.
         cp ${T2W_ATLAS_SPACE} ${T2WXFM_FILES_DIR}/.
         cp ${XFM} ${T2WXFM_FILES_DIR}/.
+
+        if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ORIGIN_SPACE}` ]] ; then echo "t2w origin space not found" ; continue ; fi
+        if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ATLAS_SPACE}` ]] ; then echo "t2w atlas space not found" ; continue ; fi
+        if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${XFM}` ]] ; then echo "t2w origin-to-atlas space transform not found" ; continue ; fi
 
         # mrconvert "${MOTIONCORREC_DIR}/spred5.nii.gz" "${MOTIONCORREC_DIR}/spred5STRIDES.nii.gz" -stride "$STRIDES" -force
         mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${MOTIONCORREC_DIR}/spred5.nii.gz ${PRPROCESSING_DIR}/spredraw.mif -force
@@ -1878,10 +1887,11 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 10: STEP10_TSOR_RESP_FOD_TRACTOG
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] && [[ -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  ]]  && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP10_TENSORFOD_TRACTOGRAPHY || ! $NOLOCKS = 1 ]] ; then
+if [[ $NOLOCKS = 1 && -e ${LOCK10} && ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] ; then rm ${LOCK10} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] && [[ -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  ]]  && [[ ! -e ${LOCK10} ]] ; then
 
         echo "${STEPX}.|---> Tensor FOD Tractography"
-        touch ${LOCKED_STEPS_DIR}/lock_STEP10_TENSORFOD_TRACTOGRAPHY
+        touch ${LOCK10}
         dwi2tensor \
             -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" \
             "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  \
@@ -1949,9 +1959,13 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
 		echo "Single-shell data"
 		    mkdir -v tmp
 
+            # FOD
+            dwi2response tournier -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" \
+            "${PRPROCESSING_DIR}/spred_xfm_sk.mif" \
+            ${TENFOD_TRACT_DIR}/response_single_shell.txt -force
+
             #  Perform CSD (Constrained Spherical Deconvolution) to estimate fiber orientation distributions (FODs):
             # to add if loop, if it is multi-shell or HARDI
-
             dwiextract "${PRPROCESSING_DIR}/spred_xfm_sk.mif" - | dwi2fod msmt_csd - \
                 "${TENFOD_TRACT_DIR}/response_single_shell.txt" "${TENFOD_TRACT_DIR}/wmfod_single_shell.mif" \
                 -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" -force
@@ -1982,3 +1996,5 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
+
+echo "Pipleine script complete!"
