@@ -452,7 +452,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
 
     elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
 	echo "Pulling fetal-bet docker container"
-	docker pull clembet # pull docker image
+	docker pull arfentul/fetalbet-model # pull docker image
 
     # make a subdirectory to feed into segmentation code and copy images there
 	mkdir -vp ${OUTPATHSUB}/segmentation/{fetal-bet,inputs}
@@ -460,7 +460,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     find ${OUTPATHSUB}/segmentation -maxdepth 1 -name working_TE\*z -a ! -name \*mask\* -exec cp {} -vup ${OUTPATHSUB}/segmentation/inputs/ \;
 	mpath=`readlink -f ${OUTPATHSUB}`
     # Mask dwi with Fetal-BET
-    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace clembet /bin/bash -c \
+    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model /bin/bash -c \
     "python /app/src/codes/inference.py --data_path /workspace/segmentation/inputs --save_path /workspace/segmentation/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/fetal-bet/*"
 	echo
 
