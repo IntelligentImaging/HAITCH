@@ -92,16 +92,17 @@ def main():
 
     # SET SEQUENCES MATCHES
     diffusion_matches = ["dti", "DIFFUSION", "DIFF", "diff", "dwi", "DTI", "EPI_highres_with_distortion", "epi_me_128", "dual"]
+    derivative_matches = ["_FA", "_ColFA", "_ADC", "_TENSOR_B0", "_TENSOR", "_TRACEW"]
     fieldmap_matches = ["fieldmap"]
-    T2W_matches = ["T2 HASTE", "T2haste", "T2MATCH", "AX_T2_FS", "HASTE"]
-    T1W_matches = ["VIBE"]
+    T2W_matches = ["HASTE", "haste", "T2MATCH", "AX_T2_FS"]
+    T1W_matches = ["VIBE", "vibe"]
     fmri_matches = ["fmri", "fMRI", "FMRI"]
     Multi_EchoTime=["_me", "echo", "cho" ]
 
     # CHECK FOR SEQUENCE MATCHES
     mri_modality="unknown"
     seq_name="other"
-    if any([x in ds_modality for x in diffusion_matches]):
+    if any([x in ds_modality for x in diffusion_matches]) and not any([y in ds_modality for y in derivative_matches]):
         if any([x in ds_modality for x in Multi_EchoTime]):
             mri_modality = "dwi_me"
             seq_name = "dwi_me"

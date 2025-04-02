@@ -63,7 +63,7 @@ done
 
 
 # Fetal brain segmentation
-SEGMENTATION_METHOD="DAVOOD"
+SEGMENTATION_METHOD="RAZIEH"
 
 # Both scripts segment all 3D volumes in the input path
 if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
@@ -74,17 +74,21 @@ if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
                                                   gpu_num=1 \
                                                   dilation_radius=1
 
-elif [[ ${SEGMENTATION_METHOD}  == "RAZEIH" ]]; then
+elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
+    mkdir -v ${SEG_TMP_DIR}/fetal-bet
+    mpath=`readlink -f $OUTPATHSUB`
     # Estimate Fetal-Bet field
-    cp ${SRC}/fetal-bet/AttUNet.pth $OUTPATHSUB/extra/.
-    docker run -v $OUTPATHSUB/extra:/path/in/container faghihpirayesh/fetal-bet \
-    --data_path /path/in/container/segmentation \
-    --save_path /path/in/container/FetalBet \
-    --saved_model_path /path/in/container/AttUNet.pth
+    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model /bin/bash -c \
+    "python /app/src/codes/inference.py --data_path /workspace/fod_tracts/seg_tmp --save_path /workspace/fod_tracts/seg_tmp/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/fod_tracts/seg_tmp/fetal-bet/*"
+    echo
 
-    rm $OUTPATHSUB/extra/AttUNet.pth
     # rename output files
-
+    echo "moving dwi brain masks to ${SEG_TMP_DIR}"
+    for mask in ${SEG_TMP_DIR}/fetal-bet/*predicted_mask.nii.gz ; do
+        maskbase=`basename $mask`
+        mv $mask ${SEG_TMP_DIR}/${maskbase%_predicted*}_mask.nii.gz
+    done
+    rmdir -v ${SEG_TMP_DIR}/fetal-bet 
 fi
 
 
@@ -121,9 +125,5 @@ mrconvert "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" "$MASK" -force -q
 
 mrcalc "$DMRI" "$MASK" -multiply "$DMRISK" -force -quiet
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/src/segment_fetalbrain.sh
-rm ${SEG_TMP_DIR}/* -f
-rmdir -v ${SEG_TMP_DIR}
-=======
-rm ${SEG_TMP_DIR} -fr
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/src/segment_fetalbrain.sh
+#rm ${SEG_TMP_DIR}/* -f
+#rmdir -v ${SEG_TMP_DIR}
