@@ -1960,6 +1960,9 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         else
 
             echo "Run FLIRT registration"
+	    # spred_0.nii.gz = b0
+     	    # spred_0.nii.gz + mean (b=400)
+	    # flirt -cost try other option 
             mrconvert -coord 3 0 "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_0.nii.gz" -force
             flirt -in  ${PRPROCESSING_DIR}/spred_0.nii.gz -ref  $T2W_ORIGIN_SPACE -dof 6  -cost corratio -omat ${REGISTRATION_DIR}/flirt.mat
             transformconvert ${REGISTRATION_DIR}/flirt.mat "${PRPROCESSING_DIR}/spred.mif" $T2W_ORIGIN_SPACE flirt_import ${REGISTRATION_DIR}/flirt_mrtrix.mat -force
