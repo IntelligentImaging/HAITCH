@@ -19,7 +19,6 @@ cat << EOF
     data, protocols, and scripts directories specified in script.
 
     -i LIST.txt	Specify an input text list of input data folder run paths (data/sub-x/sx/dwi/runx)
-    --conv CONVERTER Specify converter (mrconvert, dcm2niix; default=mrconvert)
     --reg STRAT	Specify registration strategy (flirt, manual, ants; default=flirt)
     -l		Ignore any existing locks		
 
@@ -45,14 +44,6 @@ while :; do
                 die 'error: input scan list not found'
             fi
             ;;
-	--conv)
-		if [[ -n "$2" ]] && [[ $2 == "dcm2niix" || $2 == "mrconvert" ]] ; then
-	   	CONVERTER=$2 # specify registration strategy
-		shift
-	   else
-	   	die 'error: invalid registration strategy'
-	   fi
-	   ;;
 	--reg)
 	   if [[ -n "$2" ]] ; then
 	   	REGSTRAT=$2 # specify registration strategy
@@ -97,7 +88,6 @@ OUTPATH="${PROJDIR}/protocols" # path of output
 # Set Defaults for optionals
 if [[ ! -n $REGSTRAT ]] ; then REGSTRAT="flirt" ; fi
 export REGSTRAT
-if [[ ! -n $CONVERTER ]] ; then CONVERTER="mrconvert" ; fi
 if [[ ! $NOLOCKS = 1 ]] ; then let NOLOCKS=0 ; fi
 
 export T2W_DATA="/home/ch162835/work/WashuFetal/dwi/t2w"
@@ -158,7 +148,7 @@ for RUNDIR in $ALLRUNS ; do
 					CONFIG_FILE="${OUTPATHSUB}/${PROTOCOL}_local-config_${FULLSUBJECTID}.sh"
 
 					# Create config file
-					bash ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -c "$CONVERTER" -g "$REGSTRAT" -l "$NOLOCKS" -o "$CONFIG_FILE"
+					bash ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -g "$REGSTRAT" -l "$NOLOCKS" -o "$CONFIG_FILE"
 
 					# Processing data
 					bash ${DMRISCRIPTS}/dMRI_HAITCH.sh "${CONFIG_FILE}"

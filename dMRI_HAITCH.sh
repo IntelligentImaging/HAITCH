@@ -191,6 +191,7 @@ T2WXFM_FILES_DIR=${OUTPATHSUB}/T2WXFM
 
 SLICEWEIGHTS_DIR=${OUTPATHSUB}/sliceweights
 TENFOD_TRACT_DIR=${OUTPATHSUB}/fod_tracts
+OUTPUT_FILES_DIR=${OUTPATHSUB}/output
 QUAL_CONTROL_DIR=${OUTPATHSUB}/qualitycontrol
 RESULTS_SATS_DIR=${OUTPATHSUB}/results
 LOCKED_STEPS_DIR=${OUTPATHSUB}/locks
@@ -225,6 +226,7 @@ mkdir -p ${T2WXFM_FILES_DIR}
 mkdir -p ${MOTIONCORREC_DIR}
 mkdir -p ${SLICEWEIGHTS_DIR}
 mkdir -p ${TENFOD_TRACT_DIR}
+mkdir -p ${OUTPUT_FILES_DIR}
 mkdir -p ${QUAL_CONTROL_DIR}
 mkdir -p ${RESULTS_SATS_DIR}
 mkdir -p ${LOCKED_STEPS_DIR}
@@ -1622,7 +1624,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
     #
     RAWWORKING_DMRI="$WORKING_DMRI"
 
-    EPOCHS=6
+    EPOCHS=6 # Set number of reconstruction iterations here
     ITER_REG="1 2 3 4"
     REG_UPDATE=0
     REG_COUNTER=0
@@ -1704,9 +1706,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
 
             SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_mzscore_${ITER}.txt"
             echo "Modfied Zscore (slice-wise) weights will be used."
-        # elif [[ $ITER -eq $((EPOCHS - 1)) ]]; then # Finalization
-
-        elif [[ $ITER -eq 15 ]]; then # Finalization # not used
+        elif [[ $ITER -eq $((EPOCHS - 1)) ]]; then # Final iteration
 
             ITERSPECIAL=1
             bash ${SRC}/applytransform.sh --weights4D "${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}.nii.gz"  \
@@ -1840,9 +1840,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         else
 
             echo "Run FLIRT registration"
-	    # spred_0.nii.gz = b0
-     	    # spred_0.nii.gz + mean (b=400)
-	    # flirt -cost try other option 
             mrconvert -coord 3 0 "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_0.nii.gz" -force
             flirt -in  ${PRPROCESSING_DIR}/spred_0.nii.gz -ref  $T2W_ORIGIN_SPACE -dof 6  -cost corratio -omat ${REGISTRATION_DIR}/flirt.mat
             transformconvert ${REGISTRATION_DIR}/flirt.mat "${PRPROCESSING_DIR}/spred.mif" $T2W_ORIGIN_SPACE flirt_import ${REGISTRATION_DIR}/flirt_mrtrix.mat -force
@@ -1999,5 +1996,19 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
+
+echo "Exporting pipeline outputs"
+for output in ${TENFOD_TRACT_DIR}/tensor.nii.gz ${TENFOD_TRACT_DIR}/fac.nii ${PRPROCESSING_DIR}/spred_xfm_sk.mif ; do
+    if [[ ! -f $output ]] ; then
+        echo "Pipeline product file ${output} not found"
+    fi
+done
+
+cp "${TENFOD_TRACT_DIR}/tensor.nii.gz" -v ${OUTPUT_FILES_DIR}/.
+cp "${TENFOD_TRACT_DIR}/fac.nii" -v ${OUTPUT_FILES_DIR}/.
+mrconvert "${PRPROCESSING_DIR}/spred_xfm_sk.mif" -stride -1,2,3,4 -export_grad_fsl \
+    ${OUTPUT_FILES_DIR}/${SUBJECTID}_${DWISESSION}.bvecs \
+    ${OUTPUT_FILES_DIR}/${SUBJECTID}_${DWISESSION}.bvals \
+    ${OUTPUT_FILES_DIR}/${SUBJECTID}_${DWISESSION}_spred.nii.gz -force
 
 echo "Pipleine script complete!"

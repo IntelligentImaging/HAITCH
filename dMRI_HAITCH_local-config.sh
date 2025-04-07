@@ -29,7 +29,6 @@ usage() {
     echo "  -s SESSION      Session identifier i.e, s1, s2"
     echo "  -m MODALITY     MODALITY i.e, dwi, dwiME, dwi_hardi"
     echo "  -r RUNNUMBER    RUNNUMBER i.e, run_21"
-    echo "  -c CONVERTER    DICOM converter i.e, mrconvert, dcm2niix"
     echo "  -g REGSTRAT	    Registration strategy i.e, flirt, ants, manual"
     echo "  -l OPTION       Ignore locks? 0=NO; 1=YES"
     echo "  -o CONFIG_FILE  Output file name"
@@ -61,15 +60,13 @@ while getopts "d:p:i:m:r:o:s:c:g:l:" opt; do
         s)
             SESSION="$OPTARG"
             ;;
-        c)
-	    CONVERTER="$OPTARG"
-	    ;;
+
         g)
-	    REGSTRAT="$OPTARG"
-	    ;;
-	l)
-	    NOLOCKS="$OPTARG"
-	    ;;
+	       REGSTRAT="$OPTARG"
+	       ;;
+	    l)
+	       NOLOCKS="$OPTARG"
+	       ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
             usage
@@ -129,9 +126,8 @@ export REFS="\${DMRISCRIPTS}/refs"
 export TMPDIR="\${PROJDIR}/tmp"
 export INPATH="\${PROJDIR}/data"
 export OUTPATH="\${PROJDIR}/protocols"
-export CONVERTER="${CONVERTER}"
 
-export INPATHSUB="\${INPATH}/${SUBJECTID}/${SESSION}/${MODALITY}/${RUNNUMBER}/${CONVERTER}"
+export INPATHSUB="\${INPATH}/${SUBJECTID}/${SESSION}/${MODALITY}/${RUNNUMBER}/mrconvert
 export OUTPATHSUB="\${OUTPATH}/${PROTOCOL}/${SUBJECTID}/${SESSION}/${MODALITY}_${RUNNUMBER}"
 
 export REGSTRAT="${REGSTRAT}"
