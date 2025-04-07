@@ -124,6 +124,3 @@ mrconvert "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" "$MASK" -force -q
 
 
 mrcalc "$DMRI" "$MASK" -multiply "$DMRISK" -force -quiet
-
-#rm ${SEG_TMP_DIR}/* -f
-#rmdir -v ${SEG_TMP_DIR}
