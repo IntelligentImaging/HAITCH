@@ -17,9 +17,9 @@ import nibabel as nib
 import argparse
 import warnings
 import time
-# from dipy.reconst.brainsuite_shore import ShoreModel, shore_matrix
-from dipy.reconst.brainsuite_shore import BrainSuiteShoreModel as ShoreModel
-from dipy.reconst.brainsuite_shore import brainsuite_shore_basis as shore_matrix
+
+from FEDI_shore import BrainSuiteShoreModel as ShoreModel
+from FEDI_shore import brainsuite_shore_basis as shore_matrix
 
 from dipy.core.gradients import gradient_table
 from dipy.data import get_fnames, get_sphere
