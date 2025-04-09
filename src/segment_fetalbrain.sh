@@ -78,7 +78,7 @@ elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
     mkdir -v ${SEG_TMP_DIR}/fetal-bet
     mpath=`readlink -f $OUTPATHSUB`
     # Estimate Fetal-Bet field
-    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model /bin/bash -c \
+    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
     "python /app/src/codes/inference.py --data_path /workspace/fod_tracts/seg_tmp --save_path /workspace/fod_tracts/seg_tmp/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/fod_tracts/seg_tmp/fetal-bet/*"
     echo
 
