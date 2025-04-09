@@ -462,7 +462,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     find ${OUTPATHSUB}/segmentation -maxdepth 1 -name working_TE\*z -a ! -name \*mask\* -exec cp {} -vup ${OUTPATHSUB}/segmentation/inputs/ \;
 	mpath=`readlink -f ${OUTPATHSUB}`
     # Mask dwi with Fetal-BET
-    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model /bin/bash -c \
+    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
     "python /app/src/codes/inference.py --data_path /workspace/segmentation/inputs --save_path /workspace/segmentation/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/fetal-bet/*"
 	echo
 
