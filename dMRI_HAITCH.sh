@@ -57,7 +57,7 @@ declare -A FEDI_DMRI_PIPELINE_STEPS=(
   [STEP7_B1FIELDBIAS_CORRECTION]="DONE"
   [STEP8_3DSHORE_RECONSTRUCTION]="DONE"
   [STEP9_REGISTRATION_T2W_ATLAS]="DONE"
-  [STEP10_TSOR_RESP_FOD_TRACTOG]="DONE"
+  [STEP10_TSOR_RESP_FOD_TRACTOG]="TODO"
 )
 
 # # # Identify the next step marked as "TODO"
@@ -472,6 +472,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
 		maskbase=`basename $mask`
 		mv $mask ${SEGMENTATION_DIR}/${maskbase%_predicted*}_mask.nii.gz
 	done
+
     if [[ ${OUTPATHSUB}/segmentation/ ]] ; then rm -rf ${OUTPATHSUB}/segmentation/{fetal-bet,inputs} ; fi
 
     else
@@ -1768,7 +1769,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
     done
 
 
-    # cp "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" "${MOTIONCORREC_DIR}/sprediction.nii.gz"
+    #cp "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" "${MOTIONCORREC_DIR}/sprediction.nii.gz"
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -1777,7 +1778,7 @@ fi
 echo "---------------------------------------------------------------------------------"
 # STEP 9: STEP9_REGISTRATION_T2W_ATLAS
 if [[ $NOLOCKS = 1 && -e ${LOCK9} && ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] ; then rm ${LOCK9} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ -e ${MOTIONCORREC_DIR}/spred5.nii.gz ]] && [[ ! -e ${LOCK9} ]]; then
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ ! -e ${LOCK9} ]]; then
 
     echo " ${STEPX}.|---> Registration to T2W and Atlas"
     touch ${LOCK9}
@@ -1806,8 +1807,9 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ATLAS_SPACE}` ]] ; then echo "t2w atlas space not found" ; continue ; fi
         if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${XFM}` ]] ; then echo "t2w origin-to-atlas space transform not found" ; continue ; fi
 
+        lastspred=`find ${MOTIONCORREC_DIR} -maxdepth 1 -name spred\*.nii.gz | sort | tail -n1`
         # mrconvert "${MOTIONCORREC_DIR}/spred5.nii.gz" "${MOTIONCORREC_DIR}/spred5STRIDES.nii.gz" -stride "$STRIDES" -force
-        mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${MOTIONCORREC_DIR}/spred5.nii.gz ${PRPROCESSING_DIR}/spredraw.mif -force
+        mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${lastspred} ${PRPROCESSING_DIR}/spredraw.mif -force
 
         mrgrid ${PRPROCESSING_DIR}/spredraw.mif regrid -vox 1.25 ${PRPROCESSING_DIR}/spred.mif -force # upsamled
 
