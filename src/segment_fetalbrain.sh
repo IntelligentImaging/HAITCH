@@ -75,18 +75,20 @@ if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
                                                   dilation_radius=1
 
 elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
-    mkdir -v ${SEG_TMP_DIR}/fetal-bet
+    mkdir -v ${SEG_TMP_DIR}/{fetal-bet,inputs}
+    chmod -R 777 ${SEG_TMP_DIR}/{fetal-bet,inputs}
+    find ${SEG_TMP_DIR} -maxdepth 1 -name working_TE\*z -a ! -name \*mask\* -exec cp {} -vup ${SEG_TMP_DIR}/inputs/ \;
     mpath=`readlink -f $OUTPATHSUB`
     # Estimate Fetal-Bet field
     docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
-    "python /app/src/codes/inference.py --data_path /workspace/fod_tracts/seg_tmp --save_path /workspace/fod_tracts/seg_tmp/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/fod_tracts/seg_tmp/fetal-bet/*"
+    "python /app/src/codes/inference.py --data_path /workspace/fod_tracts/seg_tmp/inputs --save_path /workspace/fod_tracts/seg_tmp/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/fod_tracts/seg_tmp/fetal-bet/*"
     echo
 
     # rename output files
     echo "moving dwi brain masks to ${SEG_TMP_DIR}"
     for mask in ${SEG_TMP_DIR}/fetal-bet/*predicted_mask.nii.gz ; do
         maskbase=`basename $mask`
-        mv $mask ${SEG_TMP_DIR}/${maskbase%_predicted*}_mask.nii.gz
+        cp $mask ${SEG_TMP_DIR}/${maskbase%_predicted*}_mask.nii.gz
     done
     rmdir -v ${SEG_TMP_DIR}/fetal-bet 
 fi
