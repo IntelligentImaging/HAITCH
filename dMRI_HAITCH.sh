@@ -48,15 +48,15 @@ echo "----------------------------------"
 
 # Define the PP dictionary steps
 declare -A FEDI_DMRI_PIPELINE_STEPS=(
-  [STEP1_DWI_DENOISE_USING_GSVS]="DONE"
-  [STEP2_MRDEGIBBS_RINGING_ARTI]="DONE"
-  [STEP3_RICIAN_BIAS_CORRECTION]="DONE"
-  [STEP4_FETAL_BRAIN_EXTRACTION]="DONE"
-  [STEP5_SPLIT_CROP_SKDATA_MASK]="DONE"
-  [STEP6_SLICECORRECTDISTORTION]="DONE"
-  [STEP7_B1FIELDBIAS_CORRECTION]="DONE"
-  [STEP8_3DSHORE_RECONSTRUCTION]="DONE"
-  [STEP9_REGISTRATION_T2W_ATLAS]="DONE"
+  [STEP1_DWI_DENOISE_USING_GSVS]="TODO"
+  [STEP2_MRDEGIBBS_RINGING_ARTI]="TODO"
+  [STEP3_RICIAN_BIAS_CORRECTION]="TODO"
+  [STEP4_FETAL_BRAIN_EXTRACTION]="TODO"
+  [STEP5_SPLIT_CROP_SKDATA_MASK]="TODO"
+  [STEP6_SLICECORRECTDISTORTION]="TODO"
+  [STEP7_B1FIELDBIAS_CORRECTION]="TODO"
+  [STEP8_3DSHORE_RECONSTRUCTION]="TODO"
+  [STEP9_REGISTRATION_T2W_ATLAS]="TODO"
   [STEP10_TSOR_RESP_FOD_TRACTOG]="TODO"
 )
 
@@ -1707,7 +1707,8 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
 
             SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_mzscore_${ITER}.txt"
             echo "Modfied Zscore (slice-wise) weights will be used."
-        elif [[ $ITER -eq $((EPOCHS - 1)) ]]; then # Final iteration
+        elif [[ $ITER -eq 98 ]]; then # Final iteration - alternative option for final weighting
+        #elif [[ $ITER -eq $((EPOCHS - 1)) ]]; then # This would replace the final iteration weighting method
 
             ITERSPECIAL=1
             bash ${SRC}/applytransform.sh --weights4D "${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}.nii.gz"  \
@@ -1718,12 +1719,12 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}_reg.nii.gz"
             echo "Shore-based (voxel-wise) weights will be used."
 
-        elif [[ $ITER -eq 18 ]]; then # # not used
+        elif [[ $ITER -eq 99 ]]; then # # not used - alternative option for final weighting
 
             SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fvoxelweights_shore_${ITER}.nii.gz"
                 echo "Shore-based (voxel-wise) weights will be used."
 
-        else
+        else # default weighting after the initial step
 
             SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITER}.txt"
             echo "GMM (slice-wise) weights will be used."
