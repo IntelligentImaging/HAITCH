@@ -26,13 +26,8 @@ fi
 # # Setup file directories and Lock for processing
 if [[ -e ${OUTPATHSUB}/lock && ! $NOLOCKS = 1 ]] ; then
         echo "----------------------------------"
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-        echo "@ ${SUBJECTID} OUTPATHSUB Locked"
-        echo "@ ${OUTPATHSUB}/lock"
-=======
         echo "@ $SUBJECTID $OUTPATHSUB Locked"
 	echo "@ ${OUTPATHSUB}/lock"
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
         echo "----------------------------------"
         exit
 else
@@ -41,14 +36,9 @@ fi
 
 
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 # # # Display Toolbox name
 sh ${SRC}/display_name.sh
-=======
-# # #Display Toolbox name
-${SRC}/display_name.sh
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
-sleep 3
+sleep 1
 
 echo "host: $(hostname), date: $(date)"
 echo "----------------------------------"
@@ -58,22 +48,16 @@ echo "----------------------------------"
 
 # Define the PP dictionary steps
 declare -A FEDI_DMRI_PIPELINE_STEPS=(
-  [STEP1_DWI_DENOISE_USING_GSVS]="DONE"
-  [STEP2_MRDEGIBBS_RINGING_ARTI]="DONE"
-  [STEP3_RICIAN_BIAS_CORRECTION]="DONE"
-  [STEP4_FETAL_BRAIN_EXTRACTION]="DONE"
-  [STEP5_SPLIT_CROP_SKDATA_MASK]="DONE"
-  [STEP6_SLICECORRECTDISTORTION]="DONE"
-  [STEP7_B1FIELDBIAS_CORRECTION]="DONE"
-  [STEP8_3DSHORE_RECONSTRUCTION]="DONE"
+  [STEP1_DWI_DENOISE_USING_GSVS]="TODO"
+  [STEP2_MRDEGIBBS_RINGING_ARTI]="TODO"
+  [STEP3_RICIAN_BIAS_CORRECTION]="TODO"
+  [STEP4_FETAL_BRAIN_EXTRACTION]="TODO"
+  [STEP5_SPLIT_CROP_SKDATA_MASK]="TODO"
+  [STEP6_SLICECORRECTDISTORTION]="TODO"
+  [STEP7_B1FIELDBIAS_CORRECTION]="TODO"
+  [STEP8_3DSHORE_RECONSTRUCTION]="TODO"
   [STEP9_REGISTRATION_T2W_ATLAS]="TODO"
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-  [STEP10_TSOR_RESP_FOD_TRACTOG]="DONE"
-
-=======
   [STEP10_TSOR_RESP_FOD_TRACTOG]="TODO"
-  [STEP11_JALILDATA_PREPARATION]="TODO"
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 )
 
 # # # Identify the next step marked as "TODO"
@@ -85,7 +69,6 @@ TODO_STEP=""
  done
 
 # Check if a TODO step was found and set up logging
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 LOGFILE_TODO="NO" # can disable logging here
 if [[ ${LOGFILE_TODO} == "YES" ]] && [[ -n "$TODO_STEP" ]]; then
   echo "Setting up logging"
@@ -105,28 +88,9 @@ if [[ ${LOGFILE_TODO} == "YES" ]] && [[ -n "$TODO_STEP" ]]; then
   fi
 else
   echo "LOGFILE disabled or no TODO steps found."
-=======
-if [[ -n "$TODO_STEP" ]]; then
-  echo setting up logging == disabled
-  # if (( ${#TODO_STEP} < 255 )); then
-  #   mkdir -p "${OUTPATHSUB}/logfiles"
-  #   LOGFILE="${OUTPATHSUB}/logfiles/log_${TODO_STEP}.txt"
-  #   > "$LOGFILE"
-  #   exec &>> "$LOGFILE"
-  #   set -x
-  # else
-  #   TODO_STEP="MANY_STEPS"
-  #   mkdir -p "${OUTPATHSUB}/logfiles"
-  #   LOGFILE="${OUTPATHSUB}/logfiles/log_${TODO_STEP}.txt"
-  #   > "$LOGFILE"
-  #   exec &>> "$LOGFILE"
-  #   set -x
-  # fi
-else
-  echo "No TODO steps found."
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 fi
 
+mkdir -v tmp # dwiextract requires a folder named "tmp"
 
 # Find input data
 INPUT=""
@@ -143,7 +107,9 @@ if [ -d "$INPATHSUB" ]; then
             INPUT=$(find "$INPATHSUB" -type f -name "*_dwiME*.nii.gz")
             ;;
         "dwi")
-            INPUT=$(find "$INPATHSUB" -type f -name "*_dwi_*.nii.gz")
+            #INPUT=$(find "$INPATHSUB" -type f -name "*_dwi_*.nii.gz")
+            # Data missing DICOM tags is being named differently, this is a concession to catch those cases
+	    INPUT=$(find "$INPATHSUB" -type f -name "*_dwi_*.nii.gz" -o -name "*_dwi.nii.gz")
             ;;
         *)
             echo "Invalid DWIMODALITY: $DWIMODALITY"
@@ -153,17 +119,14 @@ if [ -d "$INPATHSUB" ]; then
 
 
     if [ -z "$INPUT" ]; then
-        echo "Warning: input data not found for $1 $2 !"
+        echo "Warning: input data not found for $1 !"
         exit 1
     fi
 fi
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 echo "_mrinfo_________________________________"
 mrinfo -size $INPUT
 echo "________________________________________"
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 
 # STEP 0: SOMEPARAMETERS_SETTING
 NSIZE1=$(mrinfo -size $INPUT -quiet | awk '{print $1}')
@@ -228,9 +191,21 @@ T2WXFM_FILES_DIR=${OUTPATHSUB}/T2WXFM
 
 SLICEWEIGHTS_DIR=${OUTPATHSUB}/sliceweights
 TENFOD_TRACT_DIR=${OUTPATHSUB}/fod_tracts
+OUTPUT_FILES_DIR=${OUTPATHSUB}/output
 QUAL_CONTROL_DIR=${OUTPATHSUB}/qualitycontrol
 RESULTS_SATS_DIR=${OUTPATHSUB}/results
 LOCKED_STEPS_DIR=${OUTPATHSUB}/locks
+
+LOCK1=${LOCKED_STEPS_DIR}/lock_STEP1_DWI_DENOISE_USING_GSVS
+LOCK2=${LOCKED_STEPS_DIR}/lock_STEP2_MRDEGIBBS_RINGING_ARTI
+LOCK3=${LOCKED_STEPS_DIR}/lock_STEP3_RICIAN_BIAS_CORRECTION
+LOCK4=${LOCKED_STEPS_DIR}/lock_STEP4_FETAL_BRAIN_EXTRACTION
+LOCK5=${LOCKED_STEPS_DIR}/lock_STEP5_SPLIT_CROP_SKDATA_MASK
+LOCK6=${LOCKED_STEPS_DIR}/lock_STEP6_SLICECORRECTDISTORTION
+LOCK7=${LOCKED_STEPS_DIR}/lock_STEP7_B1FIELDBIAS_CORRECTION
+LOCK8=${LOCKED_STEPS_DIR}/lock_STEP8_3DSHORE_RECONSTRUCTION
+LOCK9=${LOCKED_STEPS_DIR}/lock_STEP9_REGISTRATION_T2W_ATLAS
+LOCK10=${LOCKED_STEPS_DIR}/lock_STEP10_TENSORFOD_TRACTOGRAPHY
 
 TMP_WORK_DIR=${OUTPATHSUB}/tmp
 
@@ -251,6 +226,7 @@ mkdir -p ${T2WXFM_FILES_DIR}
 mkdir -p ${MOTIONCORREC_DIR}
 mkdir -p ${SLICEWEIGHTS_DIR}
 mkdir -p ${TENFOD_TRACT_DIR}
+mkdir -p ${OUTPUT_FILES_DIR}
 mkdir -p ${QUAL_CONTROL_DIR}
 mkdir -p ${RESULTS_SATS_DIR}
 mkdir -p ${LOCKED_STEPS_DIR}
@@ -293,15 +269,11 @@ elif [[ $WAY_TO_DETERMINE_NECHOTIME == "FROM_JSON_FILE" ]]; then
 fi
 
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
     BVALSTE="${BVALS}"
     BVECSTE="${BVECS}"
     GRAD4CLSTE="${GRAD4CLS}"
 fi
-=======
-
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 
 echo "----------------------------------"
 echo "INPATHSUB   :  $INPATHSUB"
@@ -317,10 +289,12 @@ echo "ECHOTIME (NUMBER_ECHOTIME): $NUMBER_ECHOTIME"
 
 echo "----------------------------------"
 printf "FEDI_DMRI_PIPELINE_STEPS Details:\n\n"
+ranlist="tmp/${RANDOM}.tmp"
 for step in "${!FEDI_DMRI_PIPELINE_STEPS[@]}"; do
-  printf "%s: %s\n" "$step" "${FEDI_DMRI_PIPELINE_STEPS[$step]}"
+  printf "%s: %s\n" "$step" "${FEDI_DMRI_PIPELINE_STEPS[$step]}" >> $ranlist
 done
-
+sort -V $ranlist
+rm $ranlist
 echo "----------------------------------"
 
 
@@ -334,9 +308,10 @@ echo "----------------------------------"
 let STEPX=1
 echo "---------------------------------------------------------------------------------"
 # STEP 1: STEP1_DWI_DENOISE_USING_GSVS
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP1_DWI_DENOISE_USING_GSVS || ! $NOLOCKS = 1 ]] ; then
+if [[ $NOLOCKS = 1 && -e ${LOCK1} && ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] ; then rm ${LOCK1} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] && [[ ! -e ${LOCK1} ]] ; then
 
-    touch ${LOCKED_STEPS_DIR}/lock_STEP1_DWI_DENOISE_USING_GSVS
+    touch ${LOCK1}
 
     if [ -n "$PHASE" ]; then
         echo "To be done later"
@@ -350,11 +325,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] &
 
     else
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
         echo -e "\n ${STEPX}.|--->  dMRI noise level estimation and denoising using GSVS  ---"
-=======
-        echo -e "\n 1.|--->  dMRI noise level estimation and denoising using GSVS  ---"
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
         # Exp2 option : the improved estimator GSVS introduced in Cordero-Grande et al. (2019).
         mrconvert $INPUT -set_property comments "FEDI Pipeline" $INPUT -force
         dwidenoise -noise ${PRPROCESSING_DIR}/fullnoisemap.mif -estimator Exp2 $INPUT ${PRPROCESSING_DIR}/dwide.mif -nthreads $MRTRIX_NTHREADS -force
@@ -362,10 +333,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] &
         mrcalc $INPUT ${PRPROCESSING_DIR}/dwide.mif -subtract ${PRPROCESSING_DIR}/dwidenoise_residuals.mif -force
 
     fi
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -373,24 +340,20 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 2: STEP2_MRDEGIBBS_RINGING_ARTI
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP2_MRDEGIBBS_RINGING_ARTI || ! $NOLOCKS = 1 ]] ; then
+if [[ $NOLOCKS = 1 && -e ${LOCK2} && ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] ; then rm ${LOCK2} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] && [[ ! -e ${LOCK2} ]] ; then
 
-    touch ${LOCKED_STEPS_DIR}/lock_STEP2_MRDEGIBBS_RINGING_ARTI
+    touch ${LOCK2}
 
     # Kellner et al., 2016
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
     echo -e "\n ${STEPX}.|--->  Remove Gibbs Ringing Artifacts  ---"
-=======
-    echo -e "\n 2.|--->  Remove Gibbs Ringing Artifacts  ---"
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
     if [[ ${PROJNAME} == "BCH" ]]; then
-        ${SRC}/create_grad5cls_index.py $GRAD4CLS $GRAD5CLS $INDX
+        python ${SRC}/create_grad5cls_index.py $GRAD4CLS $GRAD5CLS $INDX
     fi
+    # mrtrix syntax allows piping of output/inputs using dashes "-". A dash in the output argument slot will pipe the output to the next command, a dash in the input argument slot will take the piped data from the previous command
+    # some mrtrix binaries including mrdegibbs require a folder named exactly "tmp" in the directory. As of this writing, a mkdir has been added earlier in the script.
     mrdegibbs ${PRPROCESSING_DIR}/dwide.mif - | mrconvert - - -stride "$STRIDES" | mrconvert - -grad $GRAD5CLS -import_pe_eddy $ACQPARAM $INDX ${PRPROCESSING_DIR}/dwigb.mif -force
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -398,13 +361,10 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 3: STEP3_RICIAN_BIAS_CORRECTION
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP3_RICIAN_BIAS_CORRECTION || ! $NOLOCKS = 1 ]] ; then
-=======
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP3_RICIAN_BIAS_CORRECTION ]] ; then
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
+if [[ $NOLOCKS = 1 && -e ${LOCK3} && ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] ; then rm ${LOCK3} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${LOCK3} ]] ; then
 
-    touch ${LOCKED_STEPS_DIR}/lock_STEP3_RICIAN_BIAS_CORRECTION
+    touch ${LOCK3}
 
     RICIAN_WAY="LOWSNR"
 
@@ -434,10 +394,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] 
     mrcalc ${PRPROCESSING_DIR}/dwigb.mif 2 -pow ${PRPROCESSING_DIR}/finitenoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if ${PRPROCESSING_DIR}/dwirc.mif -force
 
     mrconvert ${PRPROCESSING_DIR}/dwirc.mif -grad $GRAD5CLS -import_pe_eddy $ACQPARAM $INDX ${PRPROCESSING_DIR}/dwirc.mif -force
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -445,9 +402,10 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 4: STEP4_FETAL_BRAIN_EXTRACTION
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP4_FETAL_BRAIN_EXTRACTION || ! $NOLOCKS = 1  ]] ; then
+if [[ $NOLOCKS = 1 && -e ${LOCK4} && ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] ; then rm ${LOCK4} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] && [[ ! -e ${LOCK4} ]] ; then
 
-    touch ${LOCKED_STEPS_DIR}/lock_STEP4_FETAL_BRAIN_EXTRACTION
+    touch ${LOCK4}
 
     echo -e "\n${STEPX}.|---> Brain extraction ---"
 
@@ -480,36 +438,53 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     done
 
     # Fetal brain segmentation
-    SEGMENTATION_METHOD="DAVOOD"
+    echo
+    echo "============ dMRI Segmentation ============"
+    SEGMENTATION_METHOD="RAZIEH"
+    echo "Segmentation Method: $SEGMENTATION_METHOD"
+
     # Both scripts segment all 3D volumes in the input path
     if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
 
-        DVD_SRC=/local/software/dmri_segmentation_3d
+        DVD_SRC=${SRC}/dmri_segmentation_3d
         python ${DVD_SRC}/dMRI_volume_segmentation.py ${SEGMENTATION_DIR} \
                                                       ${DVD_SRC}/model_checkpoint \
                                                       gpu_num=1 \
                                                       # dilation_radius=1 # option not used
 
-    elif [[ ${SEGMENTATION_METHOD}  == "RAZEIH" ]]; then
-        # Estimate Fetal-Bet field
-        cp /local/software/fetal-bet/AttUNet.pth ${OUTPATHSUB}/.
-        docker run -v ${OUTPATHSUB}/extra:/path/in/container faghihpirayesh/fetal-bet \
-        --data_path /path/in/container/segmentation \
-        --save_path /path/in/container/FetalBet \
-        --saved_model_path /path/in/container/AttUNet.pth
-        rm ${OUTPATHSUB}/AttUNet.pth
-        # rename output files
+    elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
+	echo "Pulling fetal-bet docker container"
+	docker pull arfentul/fetalbet-model # pull docker image
 
+    # make a subdirectory to feed into segmentation code and copy images there
+	mkdir -vp ${OUTPATHSUB}/segmentation/{fetal-bet,inputs}
+    chmod 777 ${OUTPATHSUB}/segmentation/{fetal-bet,inputs}
+    find ${OUTPATHSUB}/segmentation -maxdepth 1 -name working_TE\*z -a ! -name \*mask\* -exec cp {} -vup ${OUTPATHSUB}/segmentation/inputs/ \;
+	mpath=`readlink -f ${OUTPATHSUB}`
+    # Mask dwi with Fetal-BET
+    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
+    "python /app/src/codes/inference.py --data_path /workspace/segmentation/inputs --save_path /workspace/segmentation/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/fetal-bet/*"
+	echo
+
+    # rename output files
+	echo "moving dwi brain masks to ${SEGMENTATION_DIR}"
+	for mask in ${OUTPATHSUB}/segmentation/fetal-bet/*predicted_mask.nii.gz ; do
+		maskbase=`basename $mask`
+		mv $mask ${SEGMENTATION_DIR}/${maskbase%_predicted*}_mask.nii.gz
+	done
+
+    if [[ ${OUTPATHSUB}/segmentation/ ]] ; then rm -rf ${OUTPATHSUB}/segmentation/{fetal-bet,inputs} ; fi
+
+    else
+	echo "SEGMENTATION_METHOD specified in $0 is invalid"
+	exit
     fi
 
     # Plot segmentation outliers
     for ((TE=1; TE<$((NUMBER_ECHOTIME+1)); TE++)); do
-        ${SRC}/segm_outliers.py -d "${SEGMENTATION_DIR}" -s "working_TE${TE}" -e "_mask.nii.gz" -o "${QUAL_CONTROL_DIR}/${SUBJECTID}_SegmStep4"
+        python ${SRC}/segm_outliers.py -d "${SEGMENTATION_DIR}" -s "working_TE${TE}" -e "_mask.nii.gz" -o "${QUAL_CONTROL_DIR}/${SUBJECTID}_SegmStep4"
     done
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -517,18 +492,15 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 5: STEP5_SPLIT_CROP_SKDATA_MASK
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]]  && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP5_SPLIT_CROP_SKDATA_MASK || ! $NOLOCKS = 1 ]] ; then
+if [[ $NOLOCKS = 1 && -e ${LOCK5} && ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] ; then rm ${LOCK5} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] && [[ ! -e ${LOCK5} ]] ; then
 
-    touch ${LOCKED_STEPS_DIR}/lock_STEP5_SPLIT_CROP_SKDATA_MASK
+    touch ${LOCK5}
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
     echo "${STEPX}.|---> Split, crop and skull strip data ---"
-=======
-    echo "5.|---> Split, crop and skull strip data ---"
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 
     echo "---------------------"
-    echo "1. Create Union_mask"
+    echo "5.1. Create Union_mask"
     # Create Union_mask
     mrconvert "${SEGMENTATION_DIR}/working_TE1_v0_mask.nii.gz" "${SEGMENTATION_DIR}/union_mask.mif" -force -quiet # just initlialization
 
@@ -546,18 +518,18 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
 
 
     echo "---------------------"
-    echo "2. Dilate union_mask"
+    echo "5.2. Dilate union_mask"
     # Create union_mask_dilated from union_mask
     maskfilter -largest ${SEGMENTATION_DIR}/union_mask.mif connect - | maskfilter -npass 3 - dilate "${SEGMENTATION_DIR}/union_mask_dilated.mif" -force -quiet
 
-    echo "3. Crop 4D-dMRI using union_mask_dilated"
+    echo "5.3. Crop 4D-dMRI using union_mask_dilated"
     mrgrid -all_axes "${PRPROCESSING_DIR}/dwirc.mif" crop -mask "${SEGMENTATION_DIR}/union_mask_dilated.mif" "${PRPROCESSING_DIR}/dwicrop.mif" -force -quiet
 
-    echo "4. Crop union mask"
+    echo "5.4. Crop union mask"
     mrgrid -all_axes "${SEGMENTATION_DIR}/union_mask.mif" crop -mask "${SEGMENTATION_DIR}/union_mask_dilated.mif" "${PRPROCESSING_DIR}/union_maskcrop.nii.gz" -force -quiet
 
     # Todo : create an independant script for that with input and output
-    echo "5. Ensure even dimension to avoid issues"
+    echo "5.5. Ensure even dimension to avoid issues"
     NSIZE1TMP=$(mrinfo -size "${PRPROCESSING_DIR}/dwicrop.mif" -quiet | awk '{print $1}')
     NSIZE2TMP=$(mrinfo -size "${PRPROCESSING_DIR}/dwicrop.mif" -quiet | awk '{print $2}')
     NSIZE3TMP=$(mrinfo -size "${PRPROCESSING_DIR}/dwicrop.mif" -quiet | awk '{print $3}')
@@ -570,15 +542,15 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
     if [ $((NSIZE3TMP % 2)) -ne 0 ]; then  mrconvert -coord 2 0:$((NSIZE3TMP-2)) "${PRPROCESSING_DIR}/union_maskcrop.nii.gz" "${PRPROCESSING_DIR}/union_maskcrop.nii.gz" -force -quiet; fi
 
 
-    echo "6. Get 3D volumes croppped and Skull-stripped"
+    echo "5.6. Get 3D volumes croppped and Skull-stripped"
     # 3D volumes croppped and Skull-stripped
     for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
         TE=$((VIDX % NUMBER_ECHOTIME + 1))
         VNUM=$((VIDX / NUMBER_ECHOTIME))
-        echo "6.I. Crop masks"
+        echo "5.6.I. Crop masks"
         mrgrid -all_axes "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_mask.nii.gz" crop -mask "${SEGMENTATION_DIR}/union_mask_dilated.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -force -quiet
 
-        echo "6.I.1. Ensure even dimension to avoid issues"
+        echo "5.6.I.1. Ensure even dimension to avoid issues"
         NSIZE1TMP=$(mrinfo -size "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -quiet | awk '{print $1}')
         NSIZE2TMP=$(mrinfo -size "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -quiet | awk '{print $2}')
         NSIZE3TMP=$(mrinfo -size "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -quiet | awk '{print $3}')
@@ -587,15 +559,15 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
         if [ $((NSIZE3TMP % 2)) -ne 0 ]; then  mrconvert -coord 2 0:$((NSIZE3TMP-2)) "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -force -quiet; fi
 
 
-        echo "6.I.2. Split cropped 4D into 3Ds"
+        echo "5.6.I.2. Split cropped 4D into 3Ds"
         mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwicrop.mif" - -quiet | mrconvert - "${SEGMENTATION_DIR}/dwicrop_TE${TE}_v${VNUM}.nii.gz" -axes 0,1,2 -force -quiet
 
-        echo "6.I.3. Skull-strip"
+        echo "5.6.I.3. Skull-strip"
         mrcalc "${SEGMENTATION_DIR}/dwicrop_TE${TE}_v${VNUM}.nii.gz" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -multiply "${SEGMENTATION_DIR}/dwicropsk_TE${TE}_v${VNUM}.nii.gz" -force -quiet
 
         DWI_CROPSK_LIST+="${SEGMENTATION_DIR}/dwicropsk_TE${TE}_v${VNUM}.nii.gz "
 
-        echo "6.I.4. Split cropped 4D into 2D (slices)"
+        echo "5.6.I.4. Split cropped 4D into 2D (slices)"
         SPLITING_INTO_SLICES="YES"
         if [[ $SPLITING_INTO_SLICES  == "YES" && $NUMBER_ECHOTIME -gt 1 ]]; then
             for ((SIDX=0; SIDX<${NSLICESCROP}; SIDX++)); do
@@ -607,22 +579,15 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
     done
 
     mrcat -axis 3 $DWI_CROPSK_LIST "${PRPROCESSING_DIR}/dwicropsk.nii.gz" -force
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-=======
-
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 6: STEP6_SLICECORRECTDISTORTION
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $DWIMODALITY == "dwiME" ]] && [[ $NUMBER_ECHOTIME -gt 1 ]]; then
+if [[ $NOLOCKS = 1 && -e ${LOCK6} && ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] ; then rm ${LOCK6} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $DWIMODALITY == "dwiME" ]] && [[ $NUMBER_ECHOTIME -gt 1 ]] && [[ ! -e ${LOCK6} ]] ; then
 
     # Check if VOLUME TO VOLUME DISOTRITON CORRECTION IS SIMILAR to SLICE TO SLICE
     # TO ADD NORMALIZATION SLICE PER SLICE AND normialization of the backgound
@@ -634,16 +599,13 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
 
     # #  Lock this scan in order to not be processed with other
     # touch ${DISTORTIONCO_DIR}/lock_TOPUP_CLASSIC
+    touch ${LOCK6}
 
     # Fix the DCPREFIX first, meaning which data will be used for the following steps. "dwicrop" or "dwicropsk"
     DCPREFIX="dwicrop"
     DISTORTIONCORRECTION_METHOD="TOPUP"
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
     DISTORTIONCORRECTION_WAY="CLASSIC"
     # DISTORTIONCORRECTION_WAY="VOLUMETOPUPONLY"
-=======
-    DISTORTIONCORRECTION_WAY="VOLUMETOPUPONLY"
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 
     DISTORTIONCO_TMP="${OUTPATHSUB}/distortion/tmp_${DISTORTIONCORRECTION_METHOD}_${DISTORTIONCORRECTION_WAY}"
 
@@ -750,9 +712,9 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
 
         for DIRSORDER in "APPA"; do
 
-            DISTORTIONCO_TMP="${OUTPATHSUB}/distortion/tmp_${DISTORTIONCORRECTION_METHOD}_${DISTORTIONCORRECTION_WAY}_$DIRSORDER"
+            DISTORTIONCO_TMP="${OUTPATHSUB}/distortion/tmp_${DISTORTIONCORRECTION_METHOD}_${DISTORTIONCORRECTION_WAY}_${DIRSORDER}"
             mkdir -p ${DISTORTIONCO_TMP}
-            echo "/////////////////////////////// - $DIRSORDER - ///////////////////////////////////////////"
+            echo "/////////////////////////////// - ${DIRSORDER} - ///////////////////////////////////////////"
             if [[ $DIRSORDER == "APPA" ]]; then
                 echo "0 1 0 0.0431799" > "${DISTORTIONCO_TMP}/TEs_acq_param.txt"
                 echo "0 -1 0 0.0431799" >> "${DISTORTIONCO_TMP}/TEs_acq_param.txt"
@@ -763,19 +725,13 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
 
             if [[ $DISTORTIONCORRECTION_WAY == "CLASSIC" ]]; then
 
-
-
                 echo "Start TOPUP distortion correction per slice, volume-Slice: $VNUM-$SIDX"
 
                 # EVEN ODD ?
                 dwiextract -bzero "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwicrop_allb0.mif" -force
                 NALLB0S=$(mrinfo -size "${PRPROCESSING_DIR}/dwicrop_allb0.mif" -quiet | awk '{print $4}')
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
                 LAST_B0_INDEX=$((NALLB0S - NUMBER_ECHOTIME + 1))
                 # LAST_B0_INDEX=$((NALLB0S - 1))
-=======
-                LAST_B0_INDEX=$((NALLB0S - 1))
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
                 mrconvert -coord 3 0,${LAST_B0_INDEX} "${PRPROCESSING_DIR}/dwicrop_allb0.mif" "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTE_1st_b0s.nii.gz"  -force
 
 
@@ -818,7 +774,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
                     --topup="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
                     --out="${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_CLASSIC_TE1_$DIRSORDER.nii.gz" \
                     --method=jac
-
 
                 applytopup --imain="${PRPROCESSING_DIR}/dwicrop_FSLTE2.nii.gz" --inindex=2 \
                     --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
@@ -895,7 +850,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
                     for ((SIDX=0; SIDX<${NSLICESCROP}; SIDX++)); do
                         # This way of distortion correction is not working
                         echo -e "\n |--------------->"
-                        echo "--------Start TOPUP distortion correction per slice, volume-Slice: $VNUM-$SIDX"
+                        echo "--------Start TOPUP distortion correction per slice, volume-Slice: ${VNUM}-${SIDX}"
                         # topup parameters to update :--fwhm --miter --scale=1
                         # applytopup parameters to update : --method
 
@@ -1000,7 +955,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
                         DWI_SLICE_List2+="${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}_APPLYTOPUP.nii.gz "
 
                         echo -e "\n ======================================================================================="
-
                     done
 
                     mrcat -axis $AXSLICES $DWI_SLICE_List1 "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_APPLYTOPUP.nii.gz" -force -quiet
@@ -1008,8 +962,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
 
                     DWI_VOLUME_List1+="${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_APPLYTOPUP.nii.gz "
                     DWI_VOLUME_List2+="${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_APPLYTOPUP.nii.gz "
-
-
                 done
 
                 mrcat -axis 3 $DWI_VOLUME_List1 "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}_APPLYTOPUP.nii.gz" -force -quiet
@@ -1078,7 +1030,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
                         DWI_SLICE_List2+="${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}.nii.gz "
 
                         echo -e "\n ======================================================================================="
-
                     done
 
                     mrcat -axis $AXSLICES $DWI_SLICE_List1 "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}.nii.gz" -force -quiet
@@ -1086,8 +1037,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
 
                     DWI_VOLUME_List1+="${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}.nii.gz "
                     DWI_VOLUME_List2+="${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}.nii.gz "
-
-
                 done
 
                 mrcat -axis 3 $DWI_VOLUME_List1 "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}.nii.gz" -force -quiet
@@ -1118,6 +1067,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
                 elif [ "$Forward" == "2" ]; then
                     Backward="1"
                 fi
+
                 DISTORTIONCO_TMP="${OUTPATHSUB}/distortion/tmp_${DISTORTIONCORRECTION_METHOD}_${DISTORTIONCORRECTION_WAY}"
                 DISTORTIONCO_TMP="${DISTORTIONCO_TMP}_DIR${GradientPhaseDirection}_Fte${Forward}_Bte${Backward}"
                 mkdir -p "${DISTORTIONCO_TMP}"
@@ -1296,6 +1246,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
                         DWI_VOLUME_List+="${DISTORTIONCO_TMP}/BM_v${VNUM}_perSlice.nii.gz "
                         DWI_TRSFSV_List+="${DISTORTIONCO_TMP}/Trsf_BMSlice_v${VNUM}_perSlice.nii.gz "
                     done
+
                     mrcat -axis 3 $DWI_VOLUME_List "${DISTORTIONCO_DIR}/BM/dwidc_VinitSliceDupBM_Dir${GradientPhaseDirection}_Fte${Forward}_Bte${Backward}.nii.gz" -quiet
                     mrcat -axis 3 $DWI_TRSFSV_List "${DISTORTIONCO_DIR}/BM/TRSF_VinitSliceDupBM_Dir${GradientPhaseDirection}_Fte${Forward}_Bte${Backward}.nii.gz" -quiet
 
@@ -1484,45 +1435,37 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
             done
         done
     fi
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $NUMBER_ECHOTIME -eq 1 ]] && [[ ! -e ${DISTORTIONCO_DIR}/lock || ! $NOLOCKS = 1 ]]; then
-=======
-elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $NUMBER_ECHOTIME -eq 1 ]] && [[ ! -e ${DISTORTIONCO_DIR}/lock ]]; then
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 
-    touch ${DISTORTIONCO_DIR}/lock
+
+elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $NUMBER_ECHOTIME -eq 1 ]] && [[ ! -e ${LOCK6} ]]; then
+
+    #touch ${DISTORTIONCO_DIR}/lock
+    touch ${LOCK6}
+    echo "${STEPX}.|---> Distortion Correction   ---"
     echo -e "\nNo 2nd TE is available ==> No Distortion Correction will be done."
     # mrconvert "${OUTPATHSUB}/${DCPREFIX}.mif" "${OUTPATHSUB}/dwiprebc_TE1.mif" -force
     # mrconvert "${PRPROCESSING_DIR}/union_maskcrop.nii.gz" "${OUTPATHSUB}/dwiprebc_mask_TE1.nii.gz" -force
-elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ -e ${DISTORTIONCO_DIR}/lock ]]; then
+
+elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ -e ${LOCK6} ]]; then
 
     echo "\nScan is Already processed/checked for distortion."
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
 
+
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 7: STEP7_B1FIELDBIAS_CORRECTION
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP7_B1FIELDBIAS_CORRECTION || ! $NOLOCKS = 1 ]]; then
+if [[ $NOLOCKS = 1 && -e ${LOCK7} && ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] ; then rm ${LOCK7} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] && [[ ! -e ${LOCK7} ]] ; then
 
-
-    touch ${LOCKED_STEPS_DIR}/lock_STEP7_B1FIELDBIAS_CORRECTION
+    touch ${LOCK7}
     echo -e "\n${STEPX}.|--->  B1 Field Bias Correction   ---"
-=======
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP7_B1FIELDBIAS_CORRECTION ]]; then
-
-
-    touch ${LOCKED_STEPS_DIR}/lock_STEP7_B1FIELDBIAS_CORRECTION
-    echo -e "\n |--->  B1 Field Bias Correction   ---"
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 
     B1CORRECTIONWAY="Using_B0"
+    echo "EchoTime number is ${NUMBER_ECHOTIME}"
 
 
     ############################################################
@@ -1632,10 +1575,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]}  == "TODO" ]] 
         echo "Error: Unexpected value for NUMBER_ECHOTIME."
         exit
     fi
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -1643,16 +1583,11 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 8: STEP8_3DSHORE_RECONSTRUCTION
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP8_3DSHORE_RECONSTRUCTION || ! $NOLOCKS = 1 ]]; then
+if [[ $NOLOCKS = 1 && -e ${LOCK8} && ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] ; then rm ${LOCK8} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] && [[ ! -e ${LOCK8} ]]; then
 
     echo -e "\n ${STEPX}.|--->  3D SHORE RECONSTRUCTION   ---"
-=======
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP8_3DSHORE_RECONSTRUCTION ]]; then
-
-    echo -e "\n |--->  3D SHORE RECONSTRUCTION   ---"
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
-    touch ${LOCKED_STEPS_DIR}/lock_STEP8_3DSHORE_RECONSTRUCTION
+    touch ${LOCK8}
 
     ########### mrconvert dwicrop.mif -axes 0,2,1,3 dwicropOK.mif -force
     WORKING_DMRI="${MOTIONCORREC_DIR}/working_TE1.nii.gz"
@@ -1673,7 +1608,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
 
     elif [[ ${NUMBER_ECHOTIME} -gt 1 ]]; then
 
-        "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI}" \
+        python "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI}" \
                                         --bvals "${BVALS}" \
                                         --bvecs "${BVECS}" \
                                         --grads "${GRAD4CLS}" \
@@ -1690,7 +1625,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
     #
     RAWWORKING_DMRI="$WORKING_DMRI"
 
-    EPOCHS=6
+    EPOCHS=6 # Set number of reconstruction iterations here
     ITER_REG="1 2 3 4"
     REG_UPDATE=0
     REG_COUNTER=0
@@ -1751,7 +1686,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
         echo "Start Reconstruction Iteration : $ITER"
         echo "=================================================================================================================="
         # # Outlier Detection
-        ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" \
+        python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" \
                                    --dmrigmm  "$WORKING_DMRI_GMM" \
                                    --bval "$BVALSTE" \
                                    --bvec "$BVECSTE" \
@@ -1772,12 +1707,11 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
 
             SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_mzscore_${ITER}.txt"
             echo "Modfied Zscore (slice-wise) weights will be used."
-        # elif [[ $ITER -eq $((EPOCHS - 1)) ]]; then # Finalization
-
-        elif [[ $ITER -eq 15 ]]; then # Finalization # not used
+        elif [[ $ITER -eq 98 ]]; then # Final iteration - alternative option for final weighting
+        #elif [[ $ITER -eq $((EPOCHS - 1)) ]]; then # This would replace the final iteration weighting method
 
             ITERSPECIAL=1
-            ${SRC}/applytransform --weights4D "${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}.nii.gz"  \
+            bash ${SRC}/applytransform.sh --weights4D "${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}.nii.gz"  \
                                   --workpath "${MOTIONCORREC_DIR}/registration_gmm" \
                                   --transformspath "${REG_WORKINGPATH}" \
                                   --weights4Dreg "${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}_reg.nii.gz"
@@ -1785,12 +1719,12 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}_reg.nii.gz"
             echo "Shore-based (voxel-wise) weights will be used."
 
-        elif [[ $ITER -eq 18 ]]; then # # not used
+        elif [[ $ITER -eq 99 ]]; then # # not used - alternative option for final weighting
 
             SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fvoxelweights_shore_${ITER}.nii.gz"
                 echo "Shore-based (voxel-wise) weights will be used."
 
-        else
+        else # default weighting after the initial step
 
             SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITER}.txt"
             echo "GMM (slice-wise) weights will be used."
@@ -1798,7 +1732,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
         fi
         echo "=================================================================================================================="
         # SHORE Fitting
-        ${SRC}/shorerecon.py --dmri "$WORKING_DMRI" --bval "$BVALSTE" --bvec_in "$BVECSTEIN" --bvec_out "$BVECSTE" \
+        python ${SRC}/shorerecon.py --dmri "$WORKING_DMRI" --bval "$BVALSTE" --bvec_in "$BVECSTEIN" --bvec_out "$BVECSTE" \
                              --mask "$WORKING_DMRIMASK" \
                              --weights  "${SHOREWEIGHTING}" \
                              --fspred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" \
@@ -1815,7 +1749,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             ((REG_COUNTER++))
             REG_WORKINGPATH="${MOTIONCORREC_DIR}/registration_iter${REG_COUNTER}"
             # v2v registration
-            ${SRC}/dwiregistration  --rdmri "$RAWWORKING_DMRI" \
+            bash ${SRC}/dwiregistration.sh  --rdmri "$RAWWORKING_DMRI" \
                                     --spred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" \
                                     --workingpath "${REG_WORKINGPATH}" \
                                     --rdmrireg "${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz"
@@ -1823,7 +1757,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             # Rotate bvecs per volume
             # Check if the rotation component should be inversed or not
             BVECSTEROT="${MOTIONCORREC_DIR}/rotated_bvecs$REG_UPDATE"
-            ${SRC}/rotate_bvecs_ants.py --bvecs "$BVECSTE" \
+            python ${SRC}/rotate_bvecs_ants.py --bvecs "$BVECSTE" \
                                         --bvecsnew "$BVECSTEROT" \
                                         --pathofmatfile "${REG_WORKINGPATH}" \
                                         --startprefix "Transform_v" \
@@ -1836,11 +1770,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
     done
 
 
-    # cp "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" "${MOTIONCORREC_DIR}/sprediction.nii.gz"
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
+    #cp "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" "${MOTIONCORREC_DIR}/sprediction.nii.gz"
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -1848,18 +1778,11 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 9: STEP9_REGISTRATION_T2W_ATLAS
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ -e ${MOTIONCORREC_DIR}/spred5.nii.gz ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP9_REGISTRATION_T2W_ATLAS || $NOLOCKS = 1 ]]; then
+if [[ $NOLOCKS = 1 && -e ${LOCK9} && ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] ; then rm ${LOCK9} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ ! -e ${LOCK9} ]]; then
 
     echo " ${STEPX}.|---> Registration to T2W and Atlas"
-    touch ${LOCKED_STEPS_DIR}/lock_STEP9_REGISTRATION_T2W_ATLAS
-=======
-
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ -e ${MOTIONCORREC_DIR}/spred5.nii.gz ]] && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP9_REGISTRATION_T2W_ATLAS ]]; then
-
-    echo "Step $STEPX: Registration to T2W and Atlas"
-    # touch ${LOCKED_STEPS_DIR}/lock_STEP9_REGISTRATION_T2W_ATLAS
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
+    touch ${LOCK9}
 
     # bvals and bvecs for different TE
     if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
@@ -1867,60 +1790,40 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         BVECSTE="${BVECS}"
     fi
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
     # T2W_DATA="/local/projects/sunny/protocols/setup" # now specified in browser
-=======
-#    T2W_DATA="/fileserver/alborz/clem/fediANTsreg/share/setup" # now in main
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
     FILES=(${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/*.tfm)
 
     if [[ -e ${FILES[0]} ]] && [[ -e "${BVALSTE}" ]]; then
 
-        T2W_SEGMENTATION_METHOD="SVRTK"
-        T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_t2w-t2space.nii.gz"
-        T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/struct/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_t2w.nii.gz"
-        XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_from-t2space_to-atlas.tfm"
-
-        if [ -e $T2W_ATLAS_SPACE ] && [ -e $XFM ]; then
-            echo "T2W data reconstructed using ${T2W_SEGMENTATION_METHOD}"
-        else
-
-            T2W_SEGMENTATION_METHOD="niftymic"
-            T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_t2w-t2space.nii.gz"
-            T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/struct/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_t2w.nii.gz"
-            XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_SEGMENTATION_METHOD}_from-t2space_to-atlas.tfm"
-            echo "T2W data reconstructed using ${T2W_SEGMENTATION_METHOD}"
-        fi
+        T2W_RECON_METHOD="SVRTK"
+        T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.nii.gz"
+        T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/struct/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w.nii.gz"
+        XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_from-t2space_to-atlas.tfm"
 
         cp ${T2W_ORIGIN_SPACE} ${T2WXFM_FILES_DIR}/.
         cp ${T2W_ATLAS_SPACE} ${T2WXFM_FILES_DIR}/.
         cp ${XFM} ${T2WXFM_FILES_DIR}/.
 
+        if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ORIGIN_SPACE}` ]] ; then echo "t2w origin space not found" ; continue ; fi
+        if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ATLAS_SPACE}` ]] ; then echo "t2w atlas space not found" ; continue ; fi
+        if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${XFM}` ]] ; then echo "t2w origin-to-atlas space transform not found" ; continue ; fi
+
+        lastspred=`find ${MOTIONCORREC_DIR} -maxdepth 1 -name spred\*.nii.gz | sort | tail -n1`
         # mrconvert "${MOTIONCORREC_DIR}/spred5.nii.gz" "${MOTIONCORREC_DIR}/spred5STRIDES.nii.gz" -stride "$STRIDES" -force
-        mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${MOTIONCORREC_DIR}/spred5.nii.gz ${PRPROCESSING_DIR}/spredraw.mif -force
+        mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${lastspred} ${PRPROCESSING_DIR}/spredraw.mif -force
 
         mrgrid ${PRPROCESSING_DIR}/spredraw.mif regrid -vox 1.25 ${PRPROCESSING_DIR}/spred.mif -force # upsamled
 
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
         if [[ $REGSTRAT == "manual" ]]; then
 
             # Start by SLICER OR ITKSNAP to get MANUAL_REGISTRATION_MATRIX.txt
             transformconvert ${REGISTRATION_DIR}/MANUAL_REGISTRATION_MATRIX.txt itk_import ${REGISTRATION_DIR}/itk_mrtrixslicer.mat -force
-=======
-#        MANUAL_REGISTRATION="NO"
-#        ANTS_REGISTRATION="YES"
-        if [[ $REGSTRAT == "manual" ]]; then
-
-            echo "Manual registration used"
-            transformconvert ${REGISTRATION_DIR}/LinearTransform_Slicer.txt itk_import ${REGISTRATION_DIR}/itk_mrtrixslicer.mat -force
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
             transformcalc  ${REGISTRATION_DIR}/itk_mrtrixslicer.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
 
         elif [[ $REGSTRAT == "ants" ]] ; then
 
             echo "ANTs registration used"
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
   	        OUTANTS="${REGISTRATION_DIR}/ANTSrigid_to_t2"
   	        ANTSXFM=${OUTANTS}Affine.txt
   	        mrconvert "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred.nii.gz"
@@ -1937,32 +1840,9 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
   	    c3d_affine_tool -ref ${T2W_ORIGIN_SPACE} -src ${PRPROCESSING_DIR}/spred.nii.gz -itk ${ANTSXFM} -ras2fsl -o ${REGISTRATION_DIR}/c3d_ants_dwi-to-t2.mat
         transformconvert ${REGISTRATION_DIR}/c3d_ants_dwi-to-t2.mat ${PRPROCESSING_DIR}/spred.mif ${T2W_ORIGIN_SPACE} flirt_import ${REGISTRATION_DIR}/itk_ants.mat -force
         transformcalc  ${REGISTRATION_DIR}/itk_ants.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
-=======
-	    OUTANTS="${REGISTRATION_DIR}/ANTSrigid_to_t2"
-	    ANTSXFM=${OUTANTS}Affine.txt
-	    mrconvert "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred.nii.gz"
-	    if [[ ! -f ${OUTANTS}/ANTSrigid_to_t2.nii.gz ]] ; then
-		echo "Running ANTS"
-		ANTS 3 -m PR[${T2W_ORIGIN_SPACE},${PRPROCESSING_DIR}/spred.nii.gz,1,2] -o ${OUTANTS} -r Gauss[3,0] --do-rigid
-		WarpImageMultiTransform 3 ${PRPROCESSING_DIR}/spred.nii.gz ${OUTANTS}.nii.gz -R ${T2W_ORIGIN_SPACE} ${OUTANTS}Warp.nii.gz ${ANTSXFM}
-	    else
-	    	echo "ANTS output found"
-	    fi
-
-	    # c3d_affine_tool used to convert ANTS output to FSL (readable by mrtrix)
-	    c3d_affine_tool -ref ${T2W_ORIGIN_SPACE} -src ${PRPROCESSING_DIR}/spred.nii.gz -itk ${ANTSXFM} -ras2fsl -o ${REGISTRATION_DIR}/c3d_ants_dwi-to-t2.mat
-
-
-            transformconvert ${REGISTRATION_DIR}/c3d_ants_dwi-to-t2.mat ${PRPROCESSING_DIR}/spred.mif ${T2W_ORIGIN_SPACE} flirt_import ${REGISTRATION_DIR}/itk_ants.mat -force
-            transformcalc  ${REGISTRATION_DIR}/itk_ants.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
-
         else
 
             echo "Run FLIRT registration"
-	    # spred_0.nii.gz = b0
-     	    # spred_0.nii.gz + mean (b=400)
-	    # flirt -cost try other option 
             mrconvert -coord 3 0 "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_0.nii.gz" -force
             flirt -in  ${PRPROCESSING_DIR}/spred_0.nii.gz -ref  $T2W_ORIGIN_SPACE -dof 6  -cost corratio -omat ${REGISTRATION_DIR}/flirt.mat
             transformconvert ${REGISTRATION_DIR}/flirt.mat "${PRPROCESSING_DIR}/spred.mif" $T2W_ORIGIN_SPACE flirt_import ${REGISTRATION_DIR}/flirt_mrtrix.mat -force
@@ -1971,10 +1851,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         fi
 
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
         # just for QC
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
         mrtransform  -linear ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${REGISTRATION_DIR}/spred_reg2T2W.mif"  -inverse -force
 
 
@@ -1987,23 +1864,15 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
 
         # combination of the 2 matrices
         transformcompose  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat ${REGISTRATION_DIR}/itk_mrtrix_rigid.mat ${REGISTRATION_DIR}/combination_rigid.mat -force
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
         mrtransform  -linear ${REGISTRATION_DIR}/combination_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_xfm.mif" -force
-=======
-        mrtransform -linear ${REGISTRATION_DIR}/combination_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_xfm.mif" -force
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 
 
 
         # Haykel, March 28th, 2024: I recommend to add a registeration step "${PRPROCESSING_DIR}/spred_xfm.mif" to ${T2W_ATLAS_SPACE}
 
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 	echo "Segment fetal brain script"
         bash ${SRC}/segment_fetalbrain.sh --dmri ${PRPROCESSING_DIR}/spred_xfm.mif \
-=======
-        ${SRC}/segment_fetalbrain.sh --dmri ${PRPROCESSING_DIR}/spred_xfm.mif \
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
          --seg_tmp_dir ${TENFOD_TRACT_DIR}/seg_tmp \
          --dmriskpervolume ${PRPROCESSING_DIR}/spred_xfm_sk_pervolume.mif \
          --dmrisk ${PRPROCESSING_DIR}/spred_xfm_sk.mif \
@@ -2013,10 +1882,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         echo "Something is missing T2W scans (or may be BVALSTE)"
         echo "Looked for T2W in: ${T2W_DATA}"
     fi
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
 
-=======
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -2024,17 +1890,11 @@ fi
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 10: STEP10_TSOR_RESP_FOD_TRACTOG
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] && [[ -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  ]]  && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP10_TENSORFOD_TRACTOGRAPHY || ! $NOLOCKS = 1 ]] ; then
+if [[ $NOLOCKS = 1 && -e ${LOCK10} && ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] ; then rm ${LOCK10} ; fi
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] && [[ -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  ]]  && [[ ! -e ${LOCK10} ]] ; then
 
         echo "${STEPX}.|---> Tensor FOD Tractography"
-        touch ${LOCKED_STEPS_DIR}/lock_STEP10_TENSORFOD_TRACTOGRAPHY
-=======
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] && [[ -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  ]]  && [[ ! -e ${LOCKED_STEPS_DIR}/lock_STEP10_TENSOR_FOD_TRACTOGRAPHY ]]; then
-
-        echo Step ${STEPX}: Tensor FOD Tractography
-        # touch ${LOCKED_STEPS_DIR}/lock_STEP10_TENSORFOD_TRACTOGRAPHY
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
+        touch ${LOCK10}
         dwi2tensor \
             -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" \
             "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  \
@@ -2082,20 +1942,10 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
                 "${TENFOD_TRACT_DIR}/csf_response.txt" "${TENFOD_TRACT_DIR}/csf.mif" \
                 -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" -force
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
             # mrview "${TENFOD_TRACT_DIR}/fac.nii" -odf.load_sh "${TENFOD_TRACT_DIR}/wmfod.mif"
 
             # dhollander_tracts ??
             tckgen "${TENFOD_TRACT_DIR}/wmfod.mif" "${TENFOD_TRACT_DIR}/tractography.tck" \
-=======
-            # mrview "${TENFOD_TRACT_DIR}/fac.nii" \
-                # -odf.load_sh "${TENFOD_TRACT_DIR}/wmfod.mif"
-
-
-
-            tckgen "${TENFOD_TRACT_DIR}/wmfod.mif" \
-                   "${TENFOD_TRACT_DIR}/dhollander_tracts.tck" \
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
                     -backtrack \
                     -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" \
                     -seed_dynamic "${TENFOD_TRACT_DIR}/wmfod.mif" \
@@ -2112,20 +1962,16 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
 		echo "Single-shell data"
 		    mkdir -v tmp
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
+            # FOD
+            dwi2response tournier -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" \
+            "${PRPROCESSING_DIR}/spred_xfm_sk.mif" \
+            ${TENFOD_TRACT_DIR}/response_single_shell.txt -force
+
             #  Perform CSD (Constrained Spherical Deconvolution) to estimate fiber orientation distributions (FODs):
             # to add if loop, if it is multi-shell or HARDI
-
-            mkdir -v tmp # dwiextract requires a folder named "tmp"
             dwiextract "${PRPROCESSING_DIR}/spred_xfm_sk.mif" - | dwi2fod msmt_csd - \
                 "${TENFOD_TRACT_DIR}/response_single_shell.txt" "${TENFOD_TRACT_DIR}/wmfod_single_shell.mif" \
                 -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" -force
-=======
-		    # FOD
-		    dwi2response tournier -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" \
-		    "${PRPROCESSING_DIR}/spred_xfm_sk.mif" \
-		    ${TENFOD_TRACT_DIR}/response_single_shell.txt -force
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 
 		    #  Perform CSD (Constrained Spherical Deconvolution) to estimate fiber orientation distributions (FODs):
 		    # to add if loop, if it is multi-shell or HARDI
@@ -2137,7 +1983,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
 			# -odf.load_sh "${TENFOD_TRACT_DIR}/wmfod.mif"
 
 
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
             tckgen "${TENFOD_TRACT_DIR}/wmfod_single_shell.mif" "${TENFOD_TRACT_DIR}/tractography.tck" \
                     -backtrack \
                     -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" \
@@ -2147,55 +1992,26 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
                     -maxlength 120 \
                     -cutoff 0.01 -power 1.0 -force
             date
-=======
-
-		    tckgen "${TENFOD_TRACT_DIR}/wmfod_single_shell.mif" \
-			   "${TENFOD_TRACT_DIR}/tractography.tck" \
-			    -backtrack \
-			    -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" \
-			    -seed_dynamic "${TENFOD_TRACT_DIR}/wmfod_single_shell.mif" \
-			    -select 100000 \
-			    -minlength 10 \
-			    -maxlength 120 \
-			    -cutoff 0.01 -power 1.0 -force
-		    date
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
 
 		    # ${SRC}/convert_tck_trk.py -o tck_2_trk -t "${TENFOD_TRACT_DIR}/tractography.tck" -a "${TENFOD_TRACT_DIR}/tensor.nii.gz"
 
         fi
-<<<<<<< HEAD:FEDI/pipelines/HAITCH/dMRI_HAITCH.sh
-
-=======
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
 
-	    # Visulization:
-	    # mrview "${TENFOD_TRACT_DIR}/fac.nii" \
-	    # -tractography.load "${TENFOD_TRACT_DIR}/tractography.tck"
+echo "Exporting pipeline outputs"
+for output in ${TENFOD_TRACT_DIR}/tensor.nii.gz ${TENFOD_TRACT_DIR}/fac.nii ${PRPROCESSING_DIR}/spred_xfm_sk.mif ; do
+    if [[ ! -f $output ]] ; then
+        echo "Pipeline product file ${output} not found"
+    fi
+done
 
+cp "${TENFOD_TRACT_DIR}/tensor.nii.gz" -v ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-tensor.nii.gz
+cp "${TENFOD_TRACT_DIR}/fac.nii" -v ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-fac.nii.gz
+mrconvert "${PRPROCESSING_DIR}/spred_xfm_sk.mif" -stride -1,2,3,4 -export_grad_fsl \
+    ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvecs \
+    ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvals \
+    ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-spred.nii.gz -force
 
-((STEPX++))
-echo "---------------------------------------------------------------------------------"
-# STEP 11: STEP11_JALILDATA_PREPARATION
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP11_JALILDATA_PREPARATION"]}  == "TODO" ]] ; then
-
-    JALIL_FOLDER=${OUTPATHSUB}/FOR_JALIL/${SUBJECTID}_${DWISESSION}
-
-    mkdir -p ${JALIL_FOLDER}
-
-    if [[ -f "${TENFOD_TRACT_DIR}/dhollander_tracts.tck" ]] ; then
-	    cp "${TENFOD_TRACT_DIR}/dhollander_tracts.tck" ${JALIL_FOLDER}/.
-	elif [[ -f "${TENFOD_TRACT_DIR}/tractography.tck" ]] ; then
-		cp "${TENFOD_TRACT_DIR}/tractography.tck" ${JALIL_FOLDER}/.
-	else
-		echo "No tractography output found"
-	fi
-    cp "${TENFOD_TRACT_DIR}/tensor.nii.gz" ${JALIL_FOLDER}/.
-    cp "${TENFOD_TRACT_DIR}/fac.nii"  ${JALIL_FOLDER}/.
-    mrconvert "${PRPROCESSING_DIR}/spred_xfm_sk.mif" -stride -1,2,3,4 -export_grad_fsl ${JALIL_FOLDER}/bvecs ${JALIL_FOLDER}/bvals "${JALIL_FOLDER}/spred.nii.gz" -force
->>>>>>> 933b4dc (Add files via upload):FEDI/HAITCH/dMRI_HAITCH.sh
-else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
-fi
+echo "Pipleine script complete!"

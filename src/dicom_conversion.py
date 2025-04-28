@@ -115,7 +115,7 @@ def main():
     elif any([x in ds_modality for x in T2W_matches]):
         mri_modality="anat"
         seq_name="t2w"
-    elif any([x in ds_modality for x in T1W_matches]):s
+    elif any([x in ds_modality for x in T1W_matches]):
         mri_modality="anat"
         seq_name="vibe"
     elif any([x in ds_modality for x in fmri_matches]):

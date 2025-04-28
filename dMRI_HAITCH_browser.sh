@@ -78,24 +78,27 @@ if [ ! -d $1 ] ; then
 fi
 
 # Set project-specific variables
-PROTOCOL="FEDI"
+PROTOCOL="HAITCH"
 PROJDIR=`readlink -f $1`
 
 INPATH="${PROJDIR}/data" # path of data
-DMRISCRIPTS="${PROJDIR}/pipelines/HAITCH" # path of scripts
+export DMRISCRIPTS="${PROJDIR}/HAITCH-main" # path of scripts
 OUTPATH="${PROJDIR}/protocols" # path of output
 
 # Set Defaults for optionals
 if [[ ! -n $REGSTRAT ]] ; then REGSTRAT="flirt" ; fi
 export REGSTRAT
-if [[ ! $NOLOCKS = 1 ]] ; then let $NOLOCKS = 0 ; fi
+if [[ ! $NOLOCKS = 1 ]] ; then let NOLOCKS=0 ; fi
 
-export T2W_DATA="/fileserver/alborz/clem/fediANTsreg/share/setup"
+export T2W_DATA="/home/ch162835/work/WashuFetal/dwi/t2w"
+# requires $T2W_DATA/subj/scan/struct/subj_scan_rec-SVRTK_t2w.nii.gz
+# requires $T2W_DATA/subj/scan/xfm/subj_scan_rec-SVRTK_t2w.nii.gz
 
 # MODALITY=dwi # ie, "*" , "dwi", "dwiHARDI" or "dwiME" # HARDI only (at least 2 bvalues, we can go by any number of directions) or dMRI_ME
 
 
 # Assign all run directories to processing list, or use the supplied input text file
+# INPATH is the "data" folder with converted data
 if [[ ! -n $INLIST ]] ; then
   echo "Locating runs"
 	ALLRUNS=`find ${INPATH} -mindepth 4 -maxdepth 4 -type d -name run\*`
@@ -107,7 +110,8 @@ for RUNDIR in $ALLRUNS ; do
 	if [ -d $RUNDIR ] ; then
 
 		# Set the scan data paths and identifiers
-		RUNNUMBER=${RUNDIR##*/}
+		NOTRAILSLASH=${RUNDIR%/}
+		RUNNUMBER=${NOTRAILSLASH##*/}
 		MODALITYDIR=${RUNDIR%/*}
 		MODALITY=${MODALITYDIR##*/}
 		SESSIONDIR=${MODALITYDIR%/*}
@@ -160,5 +164,6 @@ for RUNDIR in $ALLRUNS ; do
 
 	else
 		echo "$RUNDIR is not a directory"
+		if [[ -n $INLIST ]] ; then echo "are the paths in $INLIST correct?" ; fi	
 	fi
 done
