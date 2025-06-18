@@ -23,22 +23,24 @@ if [ -z "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-# # Setup file directories and Lock for processing
+# Setup file directories and Lock for processing
+# You can put a file named "lock" in the run directory to prevent it from running again
 if [[ -e ${OUTPATHSUB}/lock && ! $NOLOCKS = 1 ]] ; then
         echo "----------------------------------"
         echo "@ $SUBJECTID $OUTPATHSUB Locked"
 	echo "@ ${OUTPATHSUB}/lock"
         echo "----------------------------------"
         exit
-else
-    touch ${OUTPATHSUB}/lock
 fi
+#else
+#    touch ${OUTPATHSUB}/lock
+#fi
 
 
 
 # # # Display Toolbox name
 sh ${SRC}/display_name.sh
-sleep 1
+sleep 2
 
 echo "host: $(hostname), date: $(date)"
 echo "----------------------------------"
@@ -47,18 +49,19 @@ echo "----------------------------------"
 
 
 # Define the PP dictionary steps
-declare -A FEDI_DMRI_PIPELINE_STEPS=(
-  [STEP1_DWI_DENOISE_USING_GSVS]="TODO"
-  [STEP2_MRDEGIBBS_RINGING_ARTI]="TODO"
-  [STEP3_RICIAN_BIAS_CORRECTION]="TODO"
-  [STEP4_FETAL_BRAIN_EXTRACTION]="TODO"
-  [STEP5_SPLIT_CROP_SKDATA_MASK]="TODO"
-  [STEP6_SLICECORRECTDISTORTION]="TODO"
-  [STEP7_B1FIELDBIAS_CORRECTION]="TODO"
-  [STEP8_3DSHORE_RECONSTRUCTION]="TODO"
-  [STEP9_REGISTRATION_T2W_ATLAS]="TODO"
-  [STEP10_TSOR_RESP_FOD_TRACTOG]="TODO"
-)
+#declare -A FEDI_DMRI_PIPELINE_STEPS=(
+#  [STEP1_DWI_DENOISE_USING_GSVS]="TODO"
+#  [STEP2_MRDEGIBBS_RINGING_ARTI]="TODO"
+#  [STEP3_RICIAN_BIAS_CORRECTION]="TODO"
+#  [STEP4_FETAL_BRAIN_EXTRACTION]="TODO"
+#  [STEP5_SPLIT_CROP_SKDATA_MASK]="TODO"
+#  [STEP6_SLICECORRECTDISTORTION]="TODO"
+#  [STEP7_B1FIELDBIAS_CORRECTION]="TODO"
+#  [STEP8_3DSHORE_RECONSTRUCTION]="TODO"
+#  [STEP9_REGISTRATION_T2W_ATLAS]="TODO"
+#  [STEP10_TSOR_RESP_FOD_TRACTOG]="TODO"
+#)
+source ${SRC}/../user_config.sh
 
 # # # Identify the next step marked as "TODO"
 TODO_STEP=""
@@ -285,6 +288,9 @@ echo "AXSLICES (SLICE-AXIS NUM) : $AXSLICES"
 echo "NVOLUMES (NUMB VOLUMES)   : $NVOLUMES"
 echo "STRIDES  (STRIDES INFO)   : $STRIDES"
 echo "ECHOTIME (NUMBER_ECHOTIME): $NUMBER_ECHOTIME"
+if [[ ! -n $NUMBER_ECHOTIME ]] ; then
+    echo "Echo Time info missing -- Check JSON: $JSONF"
+fi
 
 
 echo "----------------------------------"
@@ -308,10 +314,11 @@ echo "----------------------------------"
 let STEPX=1
 echo "---------------------------------------------------------------------------------"
 # STEP 1: STEP1_DWI_DENOISE_USING_GSVS
-if [[ $NOLOCKS = 1 && -e ${LOCK1} && ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] ; then rm ${LOCK1} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] && [[ ! -e ${LOCK1} ]] ; then
+#if [[ $NOLOCKS = 1 && -e ${LOCK1} && ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] ; then rm ${LOCK1} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] && [[ ! -e ${LOCK1} ]] ; then
+#    touch ${LOCK1}
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] && [[ ! -e ${PRPROCESSING_DIR}/dwide.mif ]] ; then
 
-    touch ${LOCK1}
 
     if [ -n "$PHASE" ]; then
         echo "To be done later"
@@ -334,16 +341,19 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] &
 
     fi
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX output ${PRPROCESSING_DIR}/dwide.mif already exists or step is not TODO. Moving on."
 fi
 
 ((STEPX++))
+sleep 1s
 echo "---------------------------------------------------------------------------------"
 # STEP 2: STEP2_MRDEGIBBS_RINGING_ARTI
-if [[ $NOLOCKS = 1 && -e ${LOCK2} && ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] ; then rm ${LOCK2} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] && [[ ! -e ${LOCK2} ]] ; then
+#if [[ $NOLOCKS = 1 && -e ${LOCK2} && ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] ; then rm ${LOCK2} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] && [[ ! -e ${LOCK2} ]] ; then
+#    touch ${LOCK2}
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] && [[ ! -e ${PRPROCESSING_DIR}/dwigb.mif ]] ; then
 
-    touch ${LOCK2}
 
     # Kellner et al., 2016
     echo -e "\n ${STEPX}.|--->  Remove Gibbs Ringing Artifacts  ---"
@@ -355,16 +365,19 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] 
     mrdegibbs ${PRPROCESSING_DIR}/dwide.mif - | mrconvert - - -stride "$STRIDES" | mrconvert - -grad $GRAD5CLS -import_pe_eddy $ACQPARAM $INDX ${PRPROCESSING_DIR}/dwigb.mif -force
 
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX output ${PRPROCESSING_DIR}/dwigb.mif already exists or step is not TODO. Moving on."
 fi
 
 ((STEPX++))
+sleep 1s
 echo "---------------------------------------------------------------------------------"
 # STEP 3: STEP3_RICIAN_BIAS_CORRECTION
-if [[ $NOLOCKS = 1 && -e ${LOCK3} && ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] ; then rm ${LOCK3} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${LOCK3} ]] ; then
+#if [[ $NOLOCKS = 1 && -e ${LOCK3} && ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] ; then rm ${LOCK3} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${LOCK3} ]] ; then
+#    touch ${LOCK3}
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${PRPROCESSING_DIR}/dwirc.mif ]] ; then
 
-    touch ${LOCK3}
 
     RICIAN_WAY="LOWSNR"
 
@@ -396,16 +409,19 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] 
     mrconvert ${PRPROCESSING_DIR}/dwirc.mif -grad $GRAD5CLS -import_pe_eddy $ACQPARAM $INDX ${PRPROCESSING_DIR}/dwirc.mif -force
 
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX output ${PRPROCESSING_DIR}/dwirc.mif already exists or step is not TODO. Moving on."
 fi
 
 ((STEPX++))
+sleep 1s
 echo "---------------------------------------------------------------------------------"
 # STEP 4: STEP4_FETAL_BRAIN_EXTRACTION
-if [[ $NOLOCKS = 1 && -e ${LOCK4} && ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] ; then rm ${LOCK4} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] && [[ ! -e ${LOCK4} ]] ; then
-
-    touch ${LOCK4}
+#if [[ $NOLOCKS = 1 && -e ${LOCK4} && ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] ; then rm ${LOCK4} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] && [[ ! -e ${LOCK4} ]] ; then
+#    touch ${LOCK4}
+maskcount=`find ${SEGMENTATION_DIR} -maxdepth 1 -name 'working*_mask.nii.gz' | wc -w`
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" && $maskcount -lt 2 ]] ; then
 
     echo -e "\n${STEPX}.|---> Brain extraction ---"
 
@@ -440,45 +456,61 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     # Fetal brain segmentation
     echo
     echo "============ dMRI Segmentation ============"
-    SEGMENTATION_METHOD="RAZIEH"
     echo "Segmentation Method: $SEGMENTATION_METHOD"
+    if [[ $SEGMENTATION_METHOD == "DAVOOD" ]] ; then
+        segin="dmri3d" ; segout="dmri3d"
+    elif [[ $SEGMENTATION_METHOD == "RAZIEH" ]] ; then
+        segin="inputs" ; segout="fetal-bet"
+    else echo SEGMENTATION_METHOD supplied in config is invalid
+        exit
+    fi 
+
+    # make a subdirectory to feed into segmentation code and copy images there
+    mkdir -vp ${OUTPATHSUB}/segmentation/{$segin,$segout}
+    chmod 777 ${OUTPATHSUB}/segmentation/{$segin,$segout}
+    mpath=`readlink -f ${OUTPATHSUB}` # mount path for container
+    find ${OUTPATHSUB}/segmentation -maxdepth 1 -regex '.*working_TE.*v[0-9]+.nii.gz' -a ! -name \*mask\* -exec cp {} -v ${OUTPATHSUB}/segmentation/${segin}/ \;
 
     # Both scripts segment all 3D volumes in the input path
     if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
+        echo "Pulling dmri3d docker container"
+        docker pull arfentul/dmri3d # pull docker image
+    
+        # Mask dwi with Fetal-BET
+        docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/dmri3d /bin/bash -c \
+        "python /src/dMRI_volume_segmentation.py /workspace/segmentation/${segin}/ /src/ gpu_num=0 dilation_radius=-1 ; chmod 666 /workspace/segmentation/${segin}/*mask.nii.gz"
+            echo
 
-        DVD_SRC=${SRC}/dmri_segmentation_3d
-        python ${DVD_SRC}/dMRI_volume_segmentation.py ${SEGMENTATION_DIR} \
-                                                      ${DVD_SRC}/model_checkpoint \
-                                                      gpu_num=1 \
-                                                      # dilation_radius=1 # option not used
+        #    DVD_SRC=${SRC}/dmri_segmentation_3d
+        #    python ${DVD_SRC}/dMRI_volume_segmentation.py ${SEGMENTATION_DIR} \
+        #                                                  ${DVD_SRC}/model_checkpoint \
+        #                                                  gpu_num=1 \
+        #                                                  # dilation_radius=1 # option not used
+        # rename output files
 
     elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
-	echo "Pulling fetal-bet docker container"
-	docker pull arfentul/fetalbet-model # pull docker image
+    	echo "Pulling fetal-bet docker container"
+    	docker pull arfentul/fetalbet-model # pull docker image
 
-    # make a subdirectory to feed into segmentation code and copy images there
-	mkdir -vp ${OUTPATHSUB}/segmentation/{fetal-bet,inputs}
-    chmod 777 ${OUTPATHSUB}/segmentation/{fetal-bet,inputs}
-    find ${OUTPATHSUB}/segmentation -maxdepth 1 -name working_TE\*z -a ! -name \*mask\* -exec cp {} -vup ${OUTPATHSUB}/segmentation/inputs/ \;
-	mpath=`readlink -f ${OUTPATHSUB}`
-    # Mask dwi with Fetal-BET
-    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
-    "python /app/src/codes/inference.py --data_path /workspace/segmentation/inputs --save_path /workspace/segmentation/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/fetal-bet/*"
-	echo
+        # Mask dwi with Fetal-BET
+        docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
+        "python /app/src/codes/inference.py --data_path /workspace/segmentation/${segin} --save_path /workspace/segmentation/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/fetal-bet/*mask.nii.gz"
+    	echo
+
+    else
+        echo "SEGMENTATION_METHOD specified in $0 is invalid"
+        exit
+    fi
 
     # rename output files
 	echo "moving dwi brain masks to ${SEGMENTATION_DIR}"
-	for mask in ${OUTPATHSUB}/segmentation/fetal-bet/*predicted_mask.nii.gz ; do
-		maskbase=`basename $mask`
-		mv $mask ${SEGMENTATION_DIR}/${maskbase%_predicted*}_mask.nii.gz
+    for outmask in ${OUTPATHSUB}/segmentation/${segout}/*mask.nii.gz ; do
+        maskbase=`basename $outmask`
+        baseim=`echo $maskbase | sed -e 's,\(v[0-9]\+\)_.*mask.nii.gz,\1,g'`
+		mv -v ${outmask} ${SEGMENTATION_DIR}/${baseim}_mask.nii.gz
 	done
 
-    if [[ ${OUTPATHSUB}/segmentation/ ]] ; then rm -rf ${OUTPATHSUB}/segmentation/{fetal-bet,inputs} ; fi
-
-    else
-	echo "SEGMENTATION_METHOD specified in $0 is invalid"
-	exit
-    fi
+    rm -f ${OUTPATHSUB}/segmentation/${segin}/* # remove the input image copies
 
     # Plot segmentation outliers
     for ((TE=1; TE<$((NUMBER_ECHOTIME+1)); TE++)); do
@@ -486,16 +518,18 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     done
 
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX mask outputs in "${SEGMENTATION_DIR}" already exist or step is not TODO. Moving on."
 fi
 
 ((STEPX++))
+sleep 1s
 echo "---------------------------------------------------------------------------------"
 # STEP 5: STEP5_SPLIT_CROP_SKDATA_MASK
-if [[ $NOLOCKS = 1 && -e ${LOCK5} && ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] ; then rm ${LOCK5} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] && [[ ! -e ${LOCK5} ]] ; then
-
-    touch ${LOCK5}
+#if [[ $NOLOCKS = 1 && -e ${LOCK5} && ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] ; then rm ${LOCK5} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] && [[ ! -e ${LOCK5} ]] ; then
+#    touch ${LOCK5}
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] && [[ ! -e "${PRPROCESSING_DIR}/dwicropsk.nii.gz" ]] ; then
 
     echo "${STEPX}.|---> Split, crop and skull strip data ---"
 
@@ -580,13 +614,17 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
 
     mrcat -axis 3 $DWI_CROPSK_LIST "${PRPROCESSING_DIR}/dwicropsk.nii.gz" -force
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX output "${PRPROCESSING_DIR}/dwicropsk.nii.gz" already exists or step is not TODO. Moving on."
 fi
 
 ((STEPX++))
+sleep 1s
 echo "---------------------------------------------------------------------------------"
 # STEP 6: STEP6_SLICECORRECTDISTORTION
-if [[ $NOLOCKS = 1 && -e ${LOCK6} && ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] ; then rm ${LOCK6} ; fi
+#if [[ $NOLOCKS = 1 && -e ${LOCK6} && ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] ; then rm ${LOCK6} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $DWIMODALITY == "dwiME" ]] && [[ $NUMBER_ECHOTIME -gt 1 ]] && [[ ! -e ${LOCK6} ]] ; then
+#    touch ${LOCK6}
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $DWIMODALITY == "dwiME" ]] && [[ $NUMBER_ECHOTIME -gt 1 ]] && [[ ! -e ${LOCK6} ]] ; then
 
     # Check if VOLUME TO VOLUME DISOTRITON CORRECTION IS SIMILAR to SLICE TO SLICE
@@ -597,9 +635,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
     # Distortion Correction per slice: to check if we should do TE1-TE2 or TE2-TE1
     # Distortion correction slice-based doesn't work using TOPUP, may be try BM later
 
-    # #  Lock this scan in order to not be processed with other
-    # touch ${DISTORTIONCO_DIR}/lock_TOPUP_CLASSIC
-    touch ${LOCK6}
+    
 
     # Fix the DCPREFIX first, meaning which data will be used for the following steps. "dwicrop" or "dwicropsk"
     DCPREFIX="dwicrop"
@@ -1437,31 +1473,35 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
     fi
 
 
-elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $NUMBER_ECHOTIME -eq 1 ]] && [[ ! -e ${LOCK6} ]]; then
+elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ $NUMBER_ECHOTIME -eq 1 ]] ; then
 
     #touch ${DISTORTIONCO_DIR}/lock
-    touch ${LOCK6}
-    echo "${STEPX}.|---> Distortion Correction   ---"
-    echo -e "\nNo 2nd TE is available ==> No Distortion Correction will be done."
+    #touch ${LOCK6}
+    echo "${STEPX}.|---> Distortion Correction ---"
+    echo -e "No 2nd TE is available ==> No Distortion Correction will be done."
     # mrconvert "${OUTPATHSUB}/${DCPREFIX}.mif" "${OUTPATHSUB}/dwiprebc_TE1.mif" -force
     # mrconvert "${PRPROCESSING_DIR}/union_maskcrop.nii.gz" "${OUTPATHSUB}/dwiprebc_mask_TE1.nii.gz" -force
 
-elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ -e ${LOCK6} ]]; then
-
-    echo "\nScan is Already processed/checked for distortion."
+#elif [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] && [[ -e ${LOCK6} ]]; then
+#
+#    echo "Step $STEPX is TODO, but the lock is set. Moving on."
 
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX output "${DISTORTIONCO_DIR}/TOPUP/dwidcTE1_VOLUMETOPUPONLY_APPA.nii.gz" already exists or step is not TODO. Moving on."
 fi
 
 
 ((STEPX++))
+sleep 1s
 echo "---------------------------------------------------------------------------------"
 # STEP 7: STEP7_B1FIELDBIAS_CORRECTION
-if [[ $NOLOCKS = 1 && -e ${LOCK7} && ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] ; then rm ${LOCK7} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] && [[ ! -e ${LOCK7} ]] ; then
+#if [[ $NOLOCKS = 1 && -e ${LOCK7} && ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] ; then rm ${LOCK7} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] && [[ ! -e ${LOCK7} ]] ; then
+#    touch ${LOCK7}
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] && [[ ! -e "${PRPROCESSING_DIR}/dwibc_TE1.mif" ]] ; then
 
-    touch ${LOCK7}
     echo -e "\n${STEPX}.|--->  B1 Field Bias Correction   ---"
 
     B1CORRECTIONWAY="Using_B0"
@@ -1577,17 +1617,21 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] &
     fi
 
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX output "${PRPROCESSING_DIR}/dwibc_TE1.mif" already exists or step is not TODO. Moving on."
 fi
 
 ((STEPX++))
+sleep 1s
 echo "---------------------------------------------------------------------------------"
 # STEP 8: STEP8_3DSHORE_RECONSTRUCTION
-if [[ $NOLOCKS = 1 && -e ${LOCK8} && ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] ; then rm ${LOCK8} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] && [[ ! -e ${LOCK8} ]]; then
+#if [[ $NOLOCKS = 1 && -e ${LOCK8} && ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] ; then rm ${LOCK8} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] && [[ ! -e ${LOCK8} ]]; then
+#        touch ${LOCK8}
+checkspred=`find ${MOTIONCORREC_DIR} -maxdepth 1 -name spred\*.nii.gz | sort | tail -n1`
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] && [[ ! -e ${checkspred} ]]; then
 
     echo -e "\n ${STEPX}.|--->  3D SHORE RECONSTRUCTION   ---"
-    touch ${LOCK8}
 
     ########### mrconvert dwicrop.mif -axes 0,2,1,3 dwicropOK.mif -force
     WORKING_DMRI="${MOTIONCORREC_DIR}/working_TE1.nii.gz"
@@ -1772,17 +1816,20 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
 
     #cp "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" "${MOTIONCORREC_DIR}/sprediction.nii.gz"
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX output "${checkspred}" already exists or step is not TODO. Moving on."
 fi
 
 ((STEPX++))
+sleep 1s
 echo "---------------------------------------------------------------------------------"
 # STEP 9: STEP9_REGISTRATION_T2W_ATLAS
-if [[ $NOLOCKS = 1 && -e ${LOCK9} && ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] ; then rm ${LOCK9} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ ! -e ${LOCK9} ]]; then
+#if [[ $NOLOCKS = 1 && -e ${LOCK9} && ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] ; then rm ${LOCK9} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ ! -e ${LOCK9} ]]; then
+#    touch ${LOCK9}
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && ( [[ ! -e "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" ]] || [[ ! -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif" ]] ) ; then
 
     echo " ${STEPX}.|---> Registration to T2W and Atlas"
-    touch ${LOCK9}
 
     # bvals and bvecs for different TE
     if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
@@ -1790,12 +1837,11 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         BVECSTE="${BVECS}"
     fi
 
-    # T2W_DATA="/local/projects/sunny/protocols/setup" # now specified in browser
     FILES=(${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/*.tfm)
 
     if [[ -e ${FILES[0]} ]] && [[ -e "${BVALSTE}" ]]; then
 
-        T2W_RECON_METHOD="SVRTK"
+        #T2W_RECON_METHOD="niftymic"
         T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.nii.gz"
         T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/struct/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w.nii.gz"
         XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_from-t2space_to-atlas.tfm"
@@ -1884,17 +1930,21 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
     fi
 
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX outputs ${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz and ${PRPROCESSING_DIR}/spred_xfm_sk.mif already exist or step is not TODO. Moving on."
 fi
 
 ((STEPX++))
+sleep 1s
 echo "---------------------------------------------------------------------------------"
 # STEP 10: STEP10_TSOR_RESP_FOD_TRACTOG
-if [[ $NOLOCKS = 1 && -e ${LOCK10} && ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] ; then rm ${LOCK10} ; fi
-if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] && [[ -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  ]]  && [[ ! -e ${LOCK10} ]] ; then
+#if [[ $NOLOCKS = 1 && -e ${LOCK10} && ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] ; then rm ${LOCK10} ; fi
+#if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] && [[ -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  ]]  && [[ ! -e ${LOCK10} ]] ; then
+#     touch ${LOCK10}
+checktck=`find ${TENFOD_TRACT_DIR} -name \*.tck`
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] && [[ -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  ]] && ( [[ ! -e "${TENFOD_TRACT_DIR}/fac.nii"  ]] || [[ ! -e "${TENFOD_TRACT_DIR}/tensor.nii.gz" ]] || [[ ! -n $checktck ]] ) ; then
 
         echo "${STEPX}.|---> Tensor FOD Tractography"
-        touch ${LOCK10}
         dwi2tensor \
             -mask "${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz" \
             "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  \
@@ -1997,9 +2047,11 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
 
         fi
 else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
+    #echo "Step $STEPX locked or not set to TODO. Moving on."
+    echo "Step $STEPX outputs ${TENFOD_TRACT_DIR}/fac.nii, ${TENFOD_TRACT_DIR}/tensor.nii.gz, and a .tck tractography already exist or step is not TODO. Moving on."
 fi
 
+echo "---------------------------------------------------------------------------------"
 echo "Exporting pipeline outputs"
 for output in ${TENFOD_TRACT_DIR}/tensor.nii.gz ${TENFOD_TRACT_DIR}/fac.nii ${PRPROCESSING_DIR}/spred_xfm_sk.mif ; do
     if [[ ! -f $output ]] ; then
