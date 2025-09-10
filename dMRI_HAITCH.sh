@@ -47,19 +47,7 @@ echo "----------------------------------"
 
 
 # Define the PP dictionary steps
-declare -A FEDI_DMRI_PIPELINE_STEPS=(
-  [STEP1_DWI_DENOISE_USING_GSVS]="TODO"
-  [STEP2_MRDEGIBBS_RINGING_ARTI]="TODO"
-  [STEP3_RICIAN_BIAS_CORRECTION]="TODO"
-  [STEP4_FETAL_BRAIN_EXTRACTION]="TODO"
-  [STEP5_SPLIT_CROP_SKDATA_MASK]="TODO"
-  [STEP6_SLICECORRECTDISTORTION]="TODO"
-  [STEP7_B1FIELDBIAS_CORRECTION]="TODO"
-  [STEP8_3DSHORE_RECONSTRUCTION]="TODO"
-  [STEP9_REGISTRATION_T2W_ATLAS]="TODO"
-  [STEP10_TSOR_RESP_FOD_TRACTOG]="TODO"
-  [STEP11_ADVANCED_FETAL_TRACTO]="TODO"
-)
+source ${SRC}/../user_config.sh
 
 # # # Identify the next step marked as "TODO"
 TODO_STEP=""
@@ -285,8 +273,11 @@ echo "NSLICES  (NUMB OF SLICES) : $NSLICES"
 echo "AXSLICES (SLICE-AXIS NUM) : $AXSLICES"
 echo "NVOLUMES (NUMB VOLUMES)   : $NVOLUMES"
 echo "STRIDES  (STRIDES INFO)   : $STRIDES"
-echo "ECHOTIME (NUMBER_ECHOTIME): $NUMBER_ECHOTIME"
-
+if [[ -n $NUMBER_ECHOTIME ]] ; then
+    echo "ECHOTIME (NUMBER_ECHOTIME): $NUMBER_ECHOTIME"
+else
+    echo "Echo Time info missing -- Check JSON: $JSONF"
+fi
 
 echo "----------------------------------"
 printf "FEDI_DMRI_PIPELINE_STEPS Details:\n\n"
@@ -441,7 +432,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     # Fetal brain segmentation
     echo
     echo "============ dMRI Segmentation ============"
-    SEGMENTATION_METHOD="RAZIEH"
     echo "Segmentation Method: $SEGMENTATION_METHOD"
 
     # Both scripts segment all 3D volumes in the input path
@@ -1796,7 +1786,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
 
     if [[ -e ${FILES[0]} ]] && [[ -e "${BVALSTE}" ]]; then
 
-        T2W_RECON_METHOD="SVRTK"
         T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.nii.gz"
         T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/struct/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w.nii.gz"
         XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_from-t2space_to-atlas.tfm"
