@@ -58,6 +58,7 @@ declare -A FEDI_DMRI_PIPELINE_STEPS=(
   [STEP8_3DSHORE_RECONSTRUCTION]="TODO"
   [STEP9_REGISTRATION_T2W_ATLAS]="TODO"
   [STEP10_TSOR_RESP_FOD_TRACTOG]="TODO"
+  [STEP11_ADVANCED_FETAL_TRACTO]="TODO"
 )
 
 # # # Identify the next step marked as "TODO"
@@ -1996,6 +1997,27 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
 		    # ${SRC}/convert_tck_trk.py -o tck_2_trk -t "${TENFOD_TRACT_DIR}/tractography.tck" -a "${TENFOD_TRACT_DIR}/tensor.nii.gz"
 
         fi
+
+
+((STEPX++))
+echo "---------------------------------------------------------------------------------"
+# STEP 11: STEP11_ADVANCED_FETAL_TRACTO
+
+
+if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP11_ADVANCED_FETAL_TRACTO"]}  == "TODO" ]]; then
+
+    python fetal_tract/advanced_fetal_tractography.py \
+      --basename GA23 \
+      --work_dir /my/data \
+      --subject_dir example \
+      --tensor_path /my/data/example/GA23.nii.gz \
+      --md_path /my/data/example/GA23_md.nii.gz \
+      --tissue_path /my/data/example/GA23_tissue.nii.gz \
+      --parcellation_path /my/data/example/GA23_regional.nii.gz
+
+fi
+
+
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
