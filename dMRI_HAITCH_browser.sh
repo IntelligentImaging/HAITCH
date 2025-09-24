@@ -90,10 +90,6 @@ if [[ ! -n $REGSTRAT ]] ; then REGSTRAT="flirt" ; fi
 export REGSTRAT
 if [[ ! $NOLOCKS = 1 ]] ; then let NOLOCKS=0 ; fi
 
-export T2W_DATA="/home/ch162835/work/WashuFetal/dwi/t2w"
-# requires $T2W_DATA/subj/scan/struct/subj_scan_rec-SVRTK_t2w.nii.gz
-# requires $T2W_DATA/subj/scan/xfm/subj_scan_rec-SVRTK_t2w.nii.gz
-
 # MODALITY=dwi # ie, "*" , "dwi", "dwiHARDI" or "dwiME" # HARDI only (at least 2 bvalues, we can go by any number of directions) or dMRI_ME
 
 
