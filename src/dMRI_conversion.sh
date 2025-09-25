@@ -81,12 +81,22 @@ function main() {
 	for SERIES in ${input_dcm_dir}/* ; do
 		if [[ -d $SERIES ]] ; then
             echo INPUT: $SERIES
+            INPUTFILES=`find $SERIES -maxdepth 1 -type f` # check for the presence of DICOM files in the input directory
+            if [[ ! -n $INPUTFILES ]] ; then
+              echo "There aren't files in $SERIES. Make sure the individual dicom files can be found in that directory"
+              continue
+            fi
             convert_dcms_conversion
             # grad5cls_index
         else
             echo "No subfolder, trying to convert this dir directly instead"
             SERIES=`dirname $SERIES`
             echo INPUT: $SERIES
+            INPUTFILES=`find $SERIES -maxdepth 1 -type f` # check for the presence of DICOM files in the input directory
+            if [[ ! -n $INPUTFILES ]] ; then
+              echo "There aren't files in $SERIES. Make sure the individual dicom files can be found in that directory"
+              continue
+            fi
             convert_dcms_conversion
             break
 		fi

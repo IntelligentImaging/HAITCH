@@ -31,7 +31,8 @@ def main():
         parser.print_help()
         return
 
-    first_dcm_file = os.listdir(args.input_directory)[0]
+    #first_dcm_file = os.listdir(args.input_directory) if os.path.isfile[0]
+    first_dcm_file = next((f for f in os.listdir(args.input_directory) if os.path.isfile(os.path.join(args.input_directory, f))), None)
 
     ds = pydicom.dcmread(os.path.join(args.input_directory, first_dcm_file))
 
@@ -87,6 +88,7 @@ def main():
     print("Subject ID           : ", patient_id)
     print("Visit ID             : ", visit_id)
     print("Series Description   : ", Series_Description)
+    print("Series Number        : ", serie_number)
 #    subject_id = f"sub-{patient_id}_{acquisition_date}"
     subject_id = f"{patient_id}"
     s_number=f"run_{serie_number}"
@@ -154,6 +156,7 @@ def main():
         subprocess.run(['dcmdjpeg', input_file, new_file])
 
 
+    mrarg = subprocess.Popen(('echo', '0'), stdout=subprocess.PIPE) # TESTING
     if mri_modality.startswith('dwi'):
         print("MRI Modality is :", mri_modality)
         # Convert DWI modality with gradient information
@@ -176,7 +179,10 @@ def main():
 #        ]
 
         print(' '.join(cmd_mrconvert))  # Print the command
-        subprocess.run(cmd_mrconvert)
+
+        subprocess.check_output((cmd_mrconvert), stdin=mrarg.stdout) # These two lines pipe "0" into the mrconvert command to get around DICOM series selection
+        mrarg.wait()
+        #subprocess.run(cmd_mrconvert)
 
         # Goal is creating the following
         json_file_params = os.path.join(output_directory_mrconvert, f'{fullid}_dMRI_params.json')
@@ -230,7 +236,9 @@ def main():
         ]
 
         print(' '.join(cmd))
-        subprocess.run(cmd)
+        subprocess.check_output((cmd), stdin=mrarg.stdout) # These two lines pipe "0" into the mrconvert command to get around DICOM series selection
+        mrarg.wait()
+        #subprocess.run(cmd)
 
 
     # Remove dmcdjpeg temporary directory
