@@ -433,43 +433,53 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     echo
     echo "============ dMRI Segmentation ============"
     echo "Segmentation Method: $SEGMENTATION_METHOD"
+    if [[ $SEGMENTATION_METHOD == "DAVOOD" ]] ; then
+        segin="dmri3d" ; segout="dmri3d"
+    elif [[ $SEGMENTATION_METHOD == "RAZIEH" ]] ; then
+        segin="inputs" ; segout="fetal-bet"
+    else echo SEGMENTATION_METHOD supplied in config is invalid
+        exit
+    fi 
+
+    # make a subdirectory to feed into segmentation code and copy images there
+    mkdir -vp ${OUTPATHSUB}/segmentation/{$segin,$segout}
+    chmod 777 ${OUTPATHSUB}/segmentation/{$segin,$segout}
+    mpath=`readlink -f ${OUTPATHSUB}` # mount path for container
+    find ${OUTPATHSUB}/segmentation -maxdepth 1 -regex '.*working_TE.*v[0-9]+.nii.gz' -a ! -name \*mask\* -exec cp {} -v ${OUTPATHSUB}/segmentation/${segin}/ \;
 
     # Both scripts segment all 3D volumes in the input path
     if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
-
-        DVD_SRC=${SRC}/dmri_segmentation_3d
-        python ${DVD_SRC}/dMRI_volume_segmentation.py ${SEGMENTATION_DIR} \
-                                                      ${DVD_SRC}/model_checkpoint \
-                                                      gpu_num=1 \
-                                                      # dilation_radius=1 # option not used
+        echo "Pulling dmri3d docker container"
+        docker pull arfentul/dmri3d # pull docker image
+    
+        # Mask dwi with Fetal-BET
+        docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/dmri3d /bin/bash -c \
+        "python /src/dMRI_volume_segmentation.py /workspace/segmentation/${segin}/ /src/ gpu_num=0 dilation_radius=-1 ; chmod 666 /workspace/segmentation/${segin}/*mask.nii.gz"
+        echo
 
     elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
-	echo "Pulling fetal-bet docker container"
-	docker pull arfentul/fetalbet-model # pull docker image
+        echo "Pulling fetal-bet docker container"
+        docker pull arfentul/fetalbet-model # pull docker image
 
-    # make a subdirectory to feed into segmentation code and copy images there
-	mkdir -vp ${OUTPATHSUB}/segmentation/{fetal-bet,inputs}
-    chmod 777 ${OUTPATHSUB}/segmentation/{fetal-bet,inputs}
-    find ${OUTPATHSUB}/segmentation -maxdepth 1 -name working_TE\*z -a ! -name \*mask\* -exec cp {} -vup ${OUTPATHSUB}/segmentation/inputs/ \;
-	mpath=`readlink -f ${OUTPATHSUB}`
-    # Mask dwi with Fetal-BET
-    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
-    "python /app/src/codes/inference.py --data_path /workspace/segmentation/inputs --save_path /workspace/segmentation/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/fetal-bet/*"
-	echo
-
-    # rename output files
-	echo "moving dwi brain masks to ${SEGMENTATION_DIR}"
-	for mask in ${OUTPATHSUB}/segmentation/fetal-bet/*predicted_mask.nii.gz ; do
-		maskbase=`basename $mask`
-		mv $mask ${SEGMENTATION_DIR}/${maskbase%_predicted*}_mask.nii.gz
-	done
-
-    if [[ ${OUTPATHSUB}/segmentation/ ]] ; then rm -rf ${OUTPATHSUB}/segmentation/{fetal-bet,inputs} ; fi
+        # Mask dwi with Fetal-BET
+        docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
+        "python /app/src/codes/inference.py --data_path /workspace/segmentation/${segin} --save_path /workspace/segmentation/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/fetal-bet/*mask.nii.gz"
+        echo
 
     else
-	echo "SEGMENTATION_METHOD specified in $0 is invalid"
-	exit
+        echo "SEGMENTATION_METHOD specified in $0 is invalid"
+        exit
     fi
+
+    # rename output files
+    echo "moving dwi brain masks to ${SEGMENTATION_DIR}"
+    for outmask in ${OUTPATHSUB}/segmentation/${segout}/*mask.nii.gz ; do
+        maskbase=`basename $outmask`
+        baseim=`echo $maskbase | sed -e 's,\(v[0-9]\+\)_.*mask.nii.gz,\1,g'`
+        mv -v ${outmask} ${SEGMENTATION_DIR}/${baseim}_mask.nii.gz
+    done
+
+    if [[ -d ${OUTPATHSUB}/segmentation/${segin} ]] ; then rm -f ${OUTPATHSUB}/segmentation/${segin}/* ; fi # remove the input image copies
 
     # Plot segmentation outliers
     for ((TE=1; TE<$((NUMBER_ECHOTIME+1)); TE++)); do
@@ -538,10 +548,10 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
     for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
         TE=$((VIDX % NUMBER_ECHOTIME + 1))
         VNUM=$((VIDX / NUMBER_ECHOTIME))
-        echo "5.6.I. Crop masks"
+        #echo "5.6.I. Crop masks"
         mrgrid -all_axes "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_mask.nii.gz" crop -mask "${SEGMENTATION_DIR}/union_mask_dilated.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -force -quiet
 
-        echo "5.6.I.1. Ensure even dimension to avoid issues"
+        #echo "5.6.I.1. Ensure even dimension to avoid issues"
         NSIZE1TMP=$(mrinfo -size "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -quiet | awk '{print $1}')
         NSIZE2TMP=$(mrinfo -size "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -quiet | awk '{print $2}')
         NSIZE3TMP=$(mrinfo -size "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -quiet | awk '{print $3}')
@@ -550,15 +560,15 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
         if [ $((NSIZE3TMP % 2)) -ne 0 ]; then  mrconvert -coord 2 0:$((NSIZE3TMP-2)) "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -force -quiet; fi
 
 
-        echo "5.6.I.2. Split cropped 4D into 3Ds"
+        #echo "5.6.I.2. Split cropped 4D into 3Ds"
         mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwicrop.mif" - -quiet | mrconvert - "${SEGMENTATION_DIR}/dwicrop_TE${TE}_v${VNUM}.nii.gz" -axes 0,1,2 -force -quiet
 
-        echo "5.6.I.3. Skull-strip"
+        #echo "5.6.I.3. Skull-strip"
         mrcalc "${SEGMENTATION_DIR}/dwicrop_TE${TE}_v${VNUM}.nii.gz" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}_maskcrop.nii.gz" -multiply "${SEGMENTATION_DIR}/dwicropsk_TE${TE}_v${VNUM}.nii.gz" -force -quiet
 
         DWI_CROPSK_LIST+="${SEGMENTATION_DIR}/dwicropsk_TE${TE}_v${VNUM}.nii.gz "
 
-        echo "5.6.I.4. Split cropped 4D into 2D (slices)"
+        #echo "5.6.I.4. Split cropped 4D into 2D (slices)"
         SPLITING_INTO_SLICES="YES"
         if [[ $SPLITING_INTO_SLICES  == "YES" && $NUMBER_ECHOTIME -gt 1 ]]; then
             for ((SIDX=0; SIDX<${NSLICESCROP}; SIDX++)); do
@@ -1804,7 +1814,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
 
         mrgrid ${PRPROCESSING_DIR}/spredraw.mif regrid -vox 1.25 ${PRPROCESSING_DIR}/spred.mif -force # upsamled
 
-
+        echo "Register DWI to T2"
         if [[ $REGSTRAT == "manual" ]]; then
 
             # Start by SLICER OR ITKSNAP to get MANUAL_REGISTRATION_MATRIX.txt
@@ -1846,9 +1856,8 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
 
 
 
-        echo "DWI(in T2W) --> ATLAS"
-        echo "XFM ........................"
-        echo "${XFM}"
+        echo "Apply atlas transform to DWI [T2 space]"
+        echo "T2-to-atlas transform: ${XFM}"
         transformconvert ${XFM} itk_import ${REGISTRATION_DIR}/itk_mrtrix.mat -force
         transformcalc ${REGISTRATION_DIR}/itk_mrtrix.mat rigid ${REGISTRATION_DIR}/itk_mrtrix_rigid.mat -force
 
