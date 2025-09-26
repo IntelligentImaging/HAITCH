@@ -82,8 +82,8 @@ PROTOCOL="HAITCH"
 PROJDIR=`readlink -f $1`
 
 INPATH="${PROJDIR}/data" # path of data
-export DMRISCRIPTS="${PROJDIR}/HAITCH-main" # path of scripts
 OUTPATH="${PROJDIR}/protocols" # path of output
+export DMRISCRIPTS=`dirname ${0}` # path of scripts
 
 # Set Defaults for optionals
 if [[ ! -n $REGSTRAT ]] ; then REGSTRAT="flirt" ; fi
