@@ -83,7 +83,7 @@ if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
     echo "Pulling dmri3d docker container"
     docker pull arfentul/dmri3d # pull docker image
 
-    # Mask dwi with Fetal-BET
+    # Mask dwi with dMRI3d
     docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/dmri3d /bin/bash -c \
     "python /src/dMRI_volume_segmentation.py /workspace/${segin}/ /src/ gpu_num=0 dilation_radius=-1 ; chmod 666 /workspace/${segin}/*mask.nii.gz"
     echo
