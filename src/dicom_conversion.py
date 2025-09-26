@@ -53,9 +53,10 @@ def main():
     if (0x0018, 0x1030) in ds:
         protocol_name = ds[0x0018, 0x1030].value
         ds_modality = protocol_name
-    elif (0x0008, 0x9209) in ds:
-        acquisition_contrast = ds[0x0008, 0x9209].value
-        ds_modality = acquisition_contrast
+    #elif (0x0008, 0x9209) in ds:
+        #acquisition_contrast = ds[0x0008, 0x9209].value
+        #ds_modality = acquisition_contrast
+        #print('B')
     elif (0x0008, 0x103e) in ds:
         ds_modality = Series_Description
     else:
@@ -114,7 +115,7 @@ def main():
         else:
             mri_modality = "dwi"
             seq_name = "dwi"
-    elif any([x in ds_modality for x in diffusion_matches]):
+    elif any([x in ds_modality for x in fieldmap_matches]):
         mri_modality = "fieldmap"
         seq_name = "fieldmap"
     elif any([x in ds_modality for x in T2W_matches]):
