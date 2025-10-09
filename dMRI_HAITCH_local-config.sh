@@ -60,10 +60,6 @@ while getopts "d:p:i:m:r:o:s:c:g:l:" opt; do
         s)
             SESSION="$OPTARG"
             ;;
-
-        g)
-	       REGSTRAT="$OPTARG"
-	       ;;
 	    l)
 	       NOLOCKS="$OPTARG"
 	       ;;

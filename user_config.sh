@@ -22,9 +22,18 @@ declare -A FEDI_DMRI_PIPELINE_STEPS=(
 # requires $T2W_DATA/subj/scan/xfm/subj_scan_rec-SVRTK_from-t2space_to-atlas.nii.gz
 export T2W_DATA="protocols/t2w"
 
-# Set the T2 reconstruction pipeline output to "niftymic" or "SVRTK"
-export T2W_RECON_METHOD="niftymic"
-#export T2W_RECON_METHOD="SVRTK"
+# Set the default T2 reconstruction pipeline output to "niftymic" or "SVRTK"
+if [[ ! -n T2W_RECON_METHOD ]] ; then
+  export T2W_RECON_METHOD="niftymic"
+  #export T2W_RECON_METHOD="SVRTK"
+fi
+
+# Set the default dwi-to-T2 registration method
+if [[ ! -n REGSTRAT ]] ; then
+  export REGSTRAT="flirt"
+  #export REGSTRAT="ants"
+  #export REGSTRAT="manual"
+fi
 
 # Set dwi brain segmentation to use DAVOOD (dmri3d) or RAZIEH (fetal-bet)
 export SEGMENTATION_METHOD="DAVOOD"
