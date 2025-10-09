@@ -1514,7 +1514,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] &
         # "${DISTORTIONCO_DIR}/BM/dwidc_SliceDupBM_Dir0_Fte1_Bte2"
         #WORKING_DMRI_BC2=${DISTORTIONCO_DIR}/BM/dwidc_TE2_TOPUPONLY_perSlice
 
-        "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI_BC1}.nii.gz" \
+        bash "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI_BC1}.nii.gz" \
                                         --bvals "${BVALS}" \
                                         --bvecs "${BVECS}" \
                                         --grads "${GRAD4CLS}" \
@@ -1816,14 +1816,15 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
 
         echo "Register DWI to T2"
         if [[ $REGSTRAT == "manual" ]]; then
+            echo method: manual
 
-            # Start by SLICER OR ITKSNAP to get MANUAL_REGISTRATION_MATRIX.txt
-            transformconvert ${REGISTRATION_DIR}/MANUAL_REGISTRATION_MATRIX.txt itk_import ${REGISTRATION_DIR}/itk_mrtrixslicer.mat -force
+            # Start by SLICER OR ITKSNAP to get MANUAL_REG_MATRIX ... preprocessing/spred_0.nii.gz to T2WXFM/*_t2w-t2space.nii.gz
+            transformconvert ${REGISTRATION_DIR}/MANUAL_REG_MATRIX.txt itk_import ${REGISTRATION_DIR}/itk_mrtrixslicer.mat -force
             transformcalc  ${REGISTRATION_DIR}/itk_mrtrixslicer.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
 
         elif [[ $REGSTRAT == "ants" ]] ; then
 
-            echo "ANTs registration used"
+            echo method: ANTS
   	        OUTANTS="${REGISTRATION_DIR}/ANTSrigid_to_t2"
   	        ANTSXFM=${OUTANTS}Affine.txt
   	        mrconvert "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred.nii.gz"
@@ -1842,7 +1843,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         transformcalc  ${REGISTRATION_DIR}/itk_ants.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
         else
 
-            echo "Run FLIRT registration"
+            echo "method: FLIRT"
             mrconvert -coord 3 0 "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_0.nii.gz" -force
             flirt -in  ${PRPROCESSING_DIR}/spred_0.nii.gz -ref  $T2W_ORIGIN_SPACE -dof 6  -cost corratio -omat ${REGISTRATION_DIR}/flirt.mat
             transformconvert ${REGISTRATION_DIR}/flirt.mat "${PRPROCESSING_DIR}/spred.mif" $T2W_ORIGIN_SPACE flirt_import ${REGISTRATION_DIR}/flirt_mrtrix.mat -force
@@ -1863,7 +1864,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
 
         # combination of the 2 matrices
         transformcompose  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat ${REGISTRATION_DIR}/itk_mrtrix_rigid.mat ${REGISTRATION_DIR}/combination_rigid.mat -force
-        mrtransform  -linear ${REGISTRATION_DIR}/combination_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_xfm.mif" -force
+        mrtransform -template ${T2W_ATLAS_SPACE} -linear ${REGISTRATION_DIR}/combination_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_xfm.mif" -force
 
 
 
