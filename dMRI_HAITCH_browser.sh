@@ -98,7 +98,7 @@ else
 fi
 
 let xcount=0
-for RUNDIR in $ALLRUNS ; do
+for RUNDIR in ${ALLRUNS[@]} ; do
 	# Match t2 recon and registration methods to current csv row
 	export T2W_RECON_METHOD=${T2_RECON_METHOD_ar[$xcount]}
 	export REGSTRAT=${REGSTRAT_ar[$xcount]}
