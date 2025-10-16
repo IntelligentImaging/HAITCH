@@ -24,8 +24,8 @@ export T2W_DATA="protocols/t2w"
 
 # Set the default T2 reconstruction pipeline output to "niftymic" or "SVRTK"
 if [[ ! -n T2W_RECON_METHOD ]] ; then
-  export T2W_RECON_METHOD="niftymic"
-  #export T2W_RECON_METHOD="SVRTK"
+  #export T2W_RECON_METHOD="niftymic"
+  export T2W_RECON_METHOD="SVRTK"
 fi
 
 # Set the default dwi-to-T2 registration method
@@ -38,3 +38,7 @@ fi
 # Set dwi brain segmentation to use DAVOOD (dmri3d) or RAZIEH (fetal-bet)
 export SEGMENTATION_METHOD="DAVOOD"
 #export SEGMENTATION_METHOD="RAZIEH"
+
+# Choose whether to use singularity instead of docker for segmentation containers
+export SING=1
+#export SING=0

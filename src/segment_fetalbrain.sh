@@ -75,24 +75,39 @@ else echo SEGMENTATION_METHOD supplied in config is invalid
 fi 
 # make a subdirectory to feed into segmentation code and copy images there
 mkdir -vp ${SEG_TMP_DIR}/{$segin,$segout}
-chmod 777 ${SEG_TMP_DIR}/segmentation/{$segin,$segout}
+chmod 777 ${SEG_TMP_DIR}/{$segin,$segout}
 mpath=`readlink -f ${SEG_TMP_DIR}` # mount path for container
 find ${SEG_TMP_DIR} -maxdepth 1 -regex '.*working_TE.*v[0-9]+.nii.gz' -a ! -name \*mask\* -exec cp {} -v ${SEG_TMP_DIR}/${segin}/ \;
 # Both scripts segment all 3D volumes in the input path
 if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
-    echo "Pulling dmri3d docker container"
-    docker pull arfentul/dmri3d # pull docker image
+    if [[ $SING = 1 ]] ; then
+        echo Running dmri3d container with singularity
+        singularity exec docker://arfentul/dmri3d /bin/bash -c "python /src/dMRI_volume_segmentation.py ${SEG_TMP_DIR}/${segin}/ /src/ gpu_num=0 dilation_radius=-1"
+    else
 
-    # Mask dwi with dMRI3d
-    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/dmri3d /bin/bash -c \
-    "python /src/dMRI_volume_segmentation.py /workspace/${segin}/ /src/ gpu_num=0 dilation_radius=-1 ; chmod 666 /workspace/${segin}/*mask.nii.gz"
+        echo "Pulling dmri3d docker container"
+        docker pull arfentul/dmri3d # pull docker image
+    
+        # Mask dwi with dMRI3d
+        docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/dmri3d /bin/bash -c \
+        "python /src/dMRI_volume_segmentation.py /workspace/${segin}/ /src/ gpu_num=0 dilation_radius=-1 ; chmod 666 /workspace/${segin}/*mask.nii.gz"
+        echo
+    fi
     echo
 elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
-    echo "Pulling fetal-bet docker container"
-    docker pull arfentul/fetalbet-model # pull docker image
-    # Mask dwi with Fetal-BET
-    docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
-    "python /app/src/codes/inference.py --data_path /workspace/${segin} --save_path /workspace/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/fetal-bet/*mask.nii.gz"
+    if [[ $SING = 1 ]] ; then
+        echo Running dmri3d container with singularity
+        singularity exec docker://fetalbet-model /bin/bash -c "python /app/src/codes/inference.py --data_path ${SEG_TMP_DIR}/${segin} --save_path ${SEG_TMP_DIR}/${segout} --saved_model_path /app/src/model/AttUNet.pth"
+    else
+
+        echo "Pulling fetal-bet docker container"
+        docker pull arfentul/fetalbet-model # pulll docker image
+
+        # Mask dwi with Fetal-BET
+        docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
+        "python /app/src/codes/inference.py --data_path /workspace/${segin} --save_path /workspace/${segout} --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/${segout}/*mask.nii.gz"
+        echo
+    fi
     echo
 else
     echo "SEGMENTATION_METHOD specified in $0 is invalid"
