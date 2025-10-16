@@ -43,9 +43,9 @@ while :; do
                 die 'error: input scan list not found'
             fi
             ;;
-	-l|--ignore-locks)
-	    let NOLOCKS=1
-	    ;;
+		-l|--ignore-locks)
+	    	let NOLOCKS=1
+	    	;;
         --) # end of optionals
             shift
             break
