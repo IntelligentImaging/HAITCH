@@ -18,9 +18,8 @@ cat << EOF
     This script starts the FEDI pipeline. Supply the project directory.
     data, protocols, and scripts directories specified in script.
 
-    -i LIST.txt	Specify an input text list of input data folder run paths (data/sub-x/sx/dwi/runx)
-    --reg STRAT	Specify registration strategy (flirt, manual, ants; default=flirt)
-    -l		Ignore any existing locks		
+    -i LIST.txt Specify an input text list of input data folder run paths (data/sub-x/sx/dwi/runx)
+    -l			Ignore any existing locks		
 
 EOF
 }
@@ -44,14 +43,6 @@ while :; do
                 die 'error: input scan list not found'
             fi
             ;;
-	--reg)
-	   if [[ -n "$2" ]] ; then
-	   	REGSTRAT=$2 # specify registration strategy
-		shift
-	   else
-	   	die 'error: invalid registration strategy'
-	   fi
-	   ;;
 	-l|--ignore-locks)
 	    let NOLOCKS=1
 	    ;;
@@ -86,8 +77,6 @@ OUTPATH="${PROJDIR}/protocols" # path of output
 export DMRISCRIPTS=`dirname ${0}` # path of scripts
 
 # Set Defaults for optionals
-if [[ ! -n $REGSTRAT ]] ; then REGSTRAT="flirt" ; fi
-export REGSTRAT
 if [[ ! $NOLOCKS = 1 ]] ; then let NOLOCKS=0 ; fi
 
 # MODALITY=dwi # ie, "*" , "dwi", "dwiHARDI" or "dwiME" # HARDI only (at least 2 bvalues, we can go by any number of directions) or dMRI_ME
@@ -97,12 +86,24 @@ if [[ ! $NOLOCKS = 1 ]] ; then let NOLOCKS=0 ; fi
 # INPATH is the "data" folder with converted data
 if [[ ! -n $INLIST ]] ; then
   echo "Locating runs"
-	ALLRUNS=`find ${INPATH} -mindepth 4 -maxdepth 4 -type d -name run\*`
+	#ALLRUNS=`find ${INPATH} -mindepth 4 -maxdepth 4 -type d -name run\*`
+	readarray -d '' ALLRUNS < <(find ${INPATH} -mindepth 4 -maxdepth 4 -type d -name run\* -print0) # searches for the run (dwi data) directories and puts them into an array
 else
-	ALLRUNS=$(cat $INLIST)
+	#ALLRUNS=$(cat $INLIST)
+	while IFS=',' read -ra array ; do
+		ALLRUNS+=("${array[0]}") # Uses the input csv to make an array of all runs to process
+		T2_RECON_METHOD_ar+=("${array[1]}") # Array of which T2w reconstruction to use as the registration target
+		REGSTRAT_ar+=("${array[2]}") # Array of which registration program to use
+	done < $INLIST
 fi
 
-for RUNDIR in $ALLRUNS ; do
+let xcount=0
+for RUNDIR in ${ALLRUNS[@]} ; do
+	# Match t2 recon and registration methods to current csv row
+	export T2W_RECON_METHOD=${T2_RECON_METHOD_ar[$xcount]}
+	export REGSTRAT=${REGSTRAT_ar[$xcount]}
+	((xcount++)) # increment array
+
 	if [ -d $RUNDIR ] ; then
 
 		# Set the scan data paths and identifiers
@@ -144,7 +145,7 @@ for RUNDIR in $ALLRUNS ; do
 					CONFIG_FILE="${OUTPATHSUB}/${PROTOCOL}_local-config_${FULLSUBJECTID}.sh"
 
 					# Create config file
-					bash ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -g "$REGSTRAT" -l "$NOLOCKS" -o "$CONFIG_FILE"
+					bash ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -l "$NOLOCKS" -o "$CONFIG_FILE"
 
 					# Processing data
 					bash ${DMRISCRIPTS}/dMRI_HAITCH.sh "${CONFIG_FILE}"
