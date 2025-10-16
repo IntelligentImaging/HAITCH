@@ -31,7 +31,8 @@ if [[ -e ${OUTPATHSUB}/lock && ! $NOLOCKS = 1 ]] ; then
         echo "----------------------------------"
         exit
 else
-    touch ${OUTPATHSUB}/lock
+    echo
+    #touch ${OUTPATHSUB}/lock
 fi
 
 
@@ -449,22 +450,36 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
 
     # Both scripts segment all 3D volumes in the input path
     if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
-        echo "Pulling dmri3d docker container"
-        docker pull arfentul/dmri3d # pull docker image
+
+        if [[ $SING = 1 ]] ; then
+            echo Running dmri3d container with singularity
+            singularity exec docker://arfentul/dmri3d /bin/bash -c "python /src/dMRI_volume_segmentation.py ${OUTPATHSUB}/segmentation/${segin}/ /src/ gpu_num=0 dilation_radius=-1"
+        else
+
+            echo "Pulling dmri3d docker container"
+            docker pull arfentul/dmri3d # pull docker image
     
-        # Mask dwi with dMRI3d
-        docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/dmri3d /bin/bash -c \
-        "python /src/dMRI_volume_segmentation.py /workspace/segmentation/${segin}/ /src/ gpu_num=0 dilation_radius=-1 ; chmod 666 /workspace/segmentation/${segin}/*mask.nii.gz"
-        echo
+            # Mask dwi with dMRI3d
+            docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/dmri3d /bin/bash -c \
+            "python /src/dMRI_volume_segmentation.py /workspace/segmentation/${segin}/ /src/ gpu_num=0 dilation_radius=-1 ; chmod 666 /workspace/segmentation/${segin}/*mask.nii.gz"
+            echo
+        fi
 
     elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
-        echo "Pulling fetal-bet docker container"
-        docker pull arfentul/fetalbet-model # pull docker image
 
-        # Mask dwi with Fetal-BET
-        docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
-        "python /app/src/codes/inference.py --data_path /workspace/segmentation/${segin} --save_path /workspace/segmentation/fetal-bet --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/fetal-bet/*mask.nii.gz"
-        echo
+        if [[ $SING = 1 ]] ; then
+            echo Running dmri3d container with singularity
+            singularity exec docker://fetalbet-model /bin/bash -c "python /app/src/codes/inference.py --data_path ${OUTPATHSUB}/segmentation/${segin}/ --save_path ${OUTPATHSUB}/segmentation/${segout}/ --saved_model_path /app/src/model/AttUNet.pth"
+        else
+
+            echo "Pulling fetal-bet docker container"
+            docker pull arfentul/fetalbet-model # pull docker image
+
+            # Mask dwi with Fetal-BET
+            docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
+            "python /app/src/codes/inference.py --data_path /workspace/segmentation/${segin} --save_path /workspace/segmentation/${segout} --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/${segout}/*mask.nii.gz"
+            echo
+        fi
 
     else
         echo "SEGMENTATION_METHOD specified in $0 is invalid"
@@ -1514,7 +1529,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] &
         # "${DISTORTIONCO_DIR}/BM/dwidc_SliceDupBM_Dir0_Fte1_Bte2"
         #WORKING_DMRI_BC2=${DISTORTIONCO_DIR}/BM/dwidc_TE2_TOPUPONLY_perSlice
 
-        bash "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI_BC1}.nii.gz" \
+        python "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI_BC1}.nii.gz" \
                                         --bvals "${BVALS}" \
                                         --bvecs "${BVECS}" \
                                         --grads "${GRAD4CLS}" \
@@ -1534,7 +1549,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] &
 
         if [[ ! -e ${PRPROCESSING_DIR}/dwiTopupVolumemask_TE1.nii.gz ]] && [[ ! -e ${PRPROCESSING_DIR}/dwiTopupVolume_sk_TE1.mif ]]; then
 
-            ${SRC}/segment_fetalbrain.sh --dmri "${WORKING_DMRI_BC1}.mif" \
+            bash ${SRC}/segment_fetalbrain.sh --dmri "${WORKING_DMRI_BC1}.mif" \
                                          --seg_tmp_dir ${PRPROCESSING_DIR}/seg_tmp \
                                          --dmrisk ${PRPROCESSING_DIR}/dwibc_sk_TE1.mif \
                                          --mask ${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz
@@ -1791,7 +1806,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         BVECSTE="${BVECS}"
     fi
 
-    # T2W_DATA="/local/projects/sunny/protocols/setup" # now specified in browser
     FILES=(${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/*.tfm)
 
     if [[ -e ${FILES[0]} ]] && [[ -e "${BVALSTE}" ]]; then
@@ -1843,7 +1857,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         transformcalc  ${REGISTRATION_DIR}/itk_ants.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
         else
 
-            echo "method: FLIRT"
+            echo method: FLIRT
             mrconvert -coord 3 0 "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_0.nii.gz" -force
             flirt -in  ${PRPROCESSING_DIR}/spred_0.nii.gz -ref  $T2W_ORIGIN_SPACE -dof 6  -cost corratio -omat ${REGISTRATION_DIR}/flirt.mat
             transformconvert ${REGISTRATION_DIR}/flirt.mat "${PRPROCESSING_DIR}/spred.mif" $T2W_ORIGIN_SPACE flirt_import ${REGISTRATION_DIR}/flirt_mrtrix.mat -force
@@ -1862,7 +1876,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         transformconvert ${XFM} itk_import ${REGISTRATION_DIR}/itk_mrtrix.mat -force
         transformcalc ${REGISTRATION_DIR}/itk_mrtrix.mat rigid ${REGISTRATION_DIR}/itk_mrtrix_rigid.mat -force
 
-        # combination of the 2 matrices
+        # combination of the 2 matrices 
         transformcompose  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat ${REGISTRATION_DIR}/itk_mrtrix_rigid.mat ${REGISTRATION_DIR}/combination_rigid.mat -force
         mrtransform -template ${T2W_ATLAS_SPACE} -linear ${REGISTRATION_DIR}/combination_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_xfm.mif" -force
 
