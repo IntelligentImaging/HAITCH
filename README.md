@@ -1,6 +1,15 @@
 # HAITCH
 Source code for distortion and motion correction in multi-shell fetal diffusion MRI.
-If you use this code, please make sure to cite the following paper:
+
+## Requirements
+* This pipeline relies heavily on MRtrix, tested with version=3.0.4
+* Tested with Python=3.13.2
+* ANTs, for registration (optionally: FSL/FLIRT as an alternate registration strategy)
+* At least one of Docker or Apptainer, for segmentation
+* This pipeline relies on the binary dwisliceoutliergmm found in: https://github.com/dchristiaens/shard-recon. Add the location of this binary to your PATH.
+* libpng15: https://github.com/pnggroup/libpng/tree/libpng15#
+
+If you use this code, you agree to cite the following publication:
 
 Snoussi, H., Karimi, D., Afacan, O., Utkur, M. Gholipour, A., 2025. Haitch: A framework for distortion and motion correction in fetal multi-shell diffusion-weighted mri. Forthcoming, Imaging Neuroscience, MIT Press. ArXiv, pp.arXiv-2406.
 

@@ -1890,7 +1890,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
          --seg_tmp_dir ${TENFOD_TRACT_DIR}/seg_tmp \
          --dmriskpervolume ${PRPROCESSING_DIR}/spred_xfm_sk_pervolume.mif \
          --dmrisk ${PRPROCESSING_DIR}/spred_xfm_sk.mif \
-        --mask ${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz
+         --mask ${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz
 
     else
         echo "Something is missing T2W scans (or may be BVALSTE)"
@@ -1969,7 +1969,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
                     -cutoff 0.01 -power 6 -force
             date
 
-            ${SRC}/convert_tck_trk.py -o tck_2_trk -t "${TENFOD_TRACT_DIR}/dhollander_tracts.tck" -a "${TENFOD_TRACT_DIR}/tensor.nii.gz"
+            # ${SRC}/convert_tck_trk.py -o tck_2_trk -t "${TENFOD_TRACT_DIR}/dhollander_tracts.tck" -a "${TENFOD_TRACT_DIR}/tensor.nii.gz"
 
         else
 
