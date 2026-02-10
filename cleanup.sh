@@ -52,5 +52,5 @@ for OUTPATHSUB in ${prot}/*/*/*run* ; do
 
 	rm -rfv ${TENFOD_TRACT_DIR}/seg_tmp
 
-
+	rm -v ${OUTPATHSUB}/tmp/*
 done
