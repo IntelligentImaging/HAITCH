@@ -504,7 +504,7 @@ def gmm_weighting(fdmri, fspred, mask, bvals, bvecs, outpath, filename_gmm):
     # it would be better if we use grad instead if fsl bval bvec
     print("Calculate GMM Weights")
     command = [
-        'dwisliceoutliergmm',
+        'hs_dwisliceoutliergmm',
         '-fslgrad', bvecs, bvals,
         '-mask', mask,
         fdmri,

@@ -94,12 +94,13 @@ dmri[dmri < 0] = 0
 
 # bvalsraw, bvecsraw = read_bvals_bvecs(fbval, fbvec)
 bvals, bvecs_in = read_bvals_bvecs(fbval, fbvec_in)
-
 bvals, bvecs_out = read_bvals_bvecs(fbval, fbvec_out)
 
-gtab_in = gradient_table(bvals, bvecs_in, b0_threshold=0)
+# gtab_in = gradient_table(bvals, bvecs_in, b0_threshold=0)
+# gtab_out = gradient_table(bvals, bvecs_out, b0_threshold=0)
 
-gtab_out = gradient_table(bvals, bvecs_out, b0_threshold=0)
+gtab_in  = gradient_table(bvals, bvecs=bvecs_in,  b0_threshold=0)
+gtab_out = gradient_table(bvals, bvecs=bvecs_out, b0_threshold=0)
 
 # Load weights txt/niftii file
 if fname_weights.endswith('.txt'):
@@ -124,7 +125,7 @@ elif dmri.shape[3] > 24:
 elif dmri.shape[3] > 12:
     radial_order = 2
 
-
+radial_order=2
 
 
 weightsraw = weightsraw * 1.5

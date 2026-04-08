@@ -10,7 +10,8 @@ from math import factorial
 import numpy as np
 from scipy.special import genlaguerre, gamma, hyp2f1
 from dipy.reconst.cache import Cache
-from dipy.reconst.multi_voxel import multi_voxel_fit
+# from dipy.reconst.multi_voxel import multi_voxel_fit
+from FEDI_multi_voxel import multi_voxel_fit
 from FEDI_shm import real_sym_sh_brainsuite
 from dipy.core.geometry import cart2sphere
 from warnings import warn

@@ -18,8 +18,9 @@ cat << EOF
     This script starts the FEDI pipeline. Supply the project directory.
     data, protocols, and scripts directories specified in script.
 
-    -i LIST.txt Specify an input text list of input data folder run paths (data/sub-x/sx/dwi/runx)
-    -l			Ignore any existing locks		
+    -i LIST.txt	Specify an input text list of input data folder run paths (data/sub-x/sx/dwi/runx)
+    --reg STRAT	Specify registration strategy (flirt, manual, ants; default=flirt)
+    -l		Ignore any existing locks		
 
 EOF
 }
@@ -43,9 +44,17 @@ while :; do
                 die 'error: input scan list not found'
             fi
             ;;
-		-l|--ignore-locks)
-	    	let NOLOCKS=1
-	    	;;
+	--reg)
+	   if [[ -n "$2" ]] ; then
+	   	REGSTRAT=$2 # specify registration strategy
+		shift
+	   else
+	   	die 'error: invalid registration strategy'
+	   fi
+	   ;;
+	-l|--ignore-locks)
+	    let NOLOCKS=1
+	    ;;
         --) # end of optionals
             shift
             break
@@ -71,53 +80,78 @@ fi
 # Set project-specific variables
 PROTOCOL="HAITCH"
 PROJDIR=`readlink -f $1`
+# PROJDIR="/home/ch244310/projects/chd"
 
 INPATH="${PROJDIR}/data" # path of data
-OUTPATH="${PROJDIR}/protocols" # path of output
-export DMRISCRIPTS=`dirname ${0}` # path of scripts
+export DMRISCRIPTS="${PROJDIR}/scripts/dmri_codes/HAITCH" # path of scripts
+OUTPATH="${PROJDIR}/data" # path of output
 
 # Set Defaults for optionals
+if [[ ! -n $REGSTRAT ]] ; then REGSTRAT="flirt" ; fi
+export REGSTRAT
 if [[ ! $NOLOCKS = 1 ]] ; then let NOLOCKS=0 ; fi
 
 # MODALITY=dwi # ie, "*" , "dwi", "dwiHARDI" or "dwiME" # HARDI only (at least 2 bvalues, we can go by any number of directions) or dMRI_ME
-
 
 # Assign all run directories to processing list, or use the supplied input text file
 # INPATH is the "data" folder with converted data
 if [[ ! -n $INLIST ]] ; then
   echo "Locating runs"
-	#ALLRUNS=`find ${INPATH} -mindepth 4 -maxdepth 4 -type d -name run\*`
-	readarray -d '' ALLRUNS < <(find ${INPATH} -mindepth 4 -maxdepth 4 -type d -name run\* -print0) # searches for the run (dwi data) directories and puts them into an array
+	ALLRUNS=`find ${INPATH} -mindepth 3 -maxdepth 3 -type d -name dMRI\*`
 else
-	#ALLRUNS=$(cat $INLIST)
-	while IFS=',' read -ra array ; do
-		ALLRUNS+=("${array[0]}") # Uses the input csv to make an array of all runs to process
-		T2_RECON_METHOD_ar+=("${array[1]}") # Array of which T2w reconstruction to use as the registration target
-		REGSTRAT_ar+=("${array[2]}") # Array of which registration program to use
-	done < $INLIST
+	ALLRUNS=$(cat $INLIST)
 fi
 
-let xcount=0
-for RUNDIR in ${ALLRUNS[@]} ; do
-	# Match t2 recon and registration methods to current csv row
-	export T2W_RECON_METHOD=${T2_RECON_METHOD_ar[$xcount]}
-	export REGSTRAT=${REGSTRAT_ar[$xcount]}
-	((xcount++)) # increment array
+echo $INLIST
 
+for RUNDIR in $ALLRUNS ; do
+	echo $RUNDIR
 	if [ -d $RUNDIR ] ; then
 
 		# Set the scan data paths and identifiers
 		NOTRAILSLASH=${RUNDIR%/}
 		RUNNUMBER=${NOTRAILSLASH##*/}
-		MODALITYDIR=${RUNDIR%/*}
-		MODALITY=${MODALITYDIR##*/}
-		SESSIONDIR=${MODALITYDIR%/*}
+
+		MODALITYDIR=${NOTRAILSLASH}
+		MODALITY=${RUNNUMBER}
+
+		SESSIONDIR=${RUNDIR%/*}
 		SESSION=${SESSIONDIR##*/}
+		SESSION=${SESSION#*_}
 		SUBJECTDIR=${SESSIONDIR%/*}
 		SUBJECTID=${SUBJECTDIR##*/}
 
+
+		# if [[ $SESSION != 2024exex ]]; then
+  #           # echo "Skipping $RUNDIR (session year not 2024: $SESSION)"
+  #           continue
+  #       fi
+
+  #       if [[ $SUBJECTID != "MRN1234" ]]; then
+  #           # echo "Skipping $RUNDIR (session year not 2024: $SESSION)"
+  #           continue
+  #       fi
+
+		echo "NOTRAILSLASH : $NOTRAILSLASH"
+		echo "RUNNUMBER : $RUNNUMBER"
+		echo "MODALITYDIR : $MODALITYDIR"
+		echo "MODALITY : $MODALITY"
+		echo "SESSIONDIR : $SESSIONDIR"
+		echo "SESSION : $SESSION"
+		echo "SUBJECTDIR : $SUBJECTDIR"
+		echo "SUBJECTID : $SUBJECTID"
+
+
+		# echo "Protocol   : $PROTOCOL"
+		# echo "SubjectID  : $SUBJECTID"
+		# echo "Session    : $SESSION"
+		# echo "Modality   : $MODALITY"
+		# echo "Run Number : $RUNNUMBER"
+		echo ""
+
+
 		case $MODALITY in
-			dwi|dwiHARDI|dwiME) # dwi|dwiHARDI|dwiME (only processing diffusion)
+			dMRI56[7-8]) # dwi|dwiHARDI|dwiME (only processing diffusion)
 				if [[ -e $RUNDIR/lock && ! $NOLOCKS = 1 ]] ; then
 
 				  echo "====================================================="
@@ -133,19 +167,63 @@ for RUNDIR in ${ALLRUNS[@]} ; do
 
 					echo "Protocol   : $PROTOCOL"
 					echo "SubjectID  : $SUBJECTID"
-					echo "Session    : $SESSION"
+					echo "Session    : $SESSION" 
 					echo "Modality   : $MODALITY"
 					echo "Run Number : $RUNNUMBER"
 					echo ""
 
 					# Creation of configuration file
-					OUTPATHSUB="${OUTPATH}/${PROTOCOL}/${SUBJECTID}/${SESSION}/${MODALITY}_${RUNNUMBER}"
-					mkdir -p ${OUTPATHSUB}
-					FULLSUBJECTID="${SUBJECTID}_${SESSION}_${MODALITY}_${RUNNUMBER}"
+					OUTPATHSUB="${NOTRAILSLASH}"
+					# mkdir -p ${OUTPATHSUB}
+					FULLSUBJECTID="${SUBJECTID}_${SESSION}_${MODALITY}"
 					CONFIG_FILE="${OUTPATHSUB}/${PROTOCOL}_local-config_${FULLSUBJECTID}.sh"
 
+					# rename files
+
+					# for file in "$NOTRAILSLASH"/*; do
+					#     case "$file" in
+					#         *.nii.gz) mv -f "$file" "$NOTRAILSLASH/$FULLSUBJECTID.nii.gz" ;;
+					#         *.bval)   mv -f "$file" "$NOTRAILSLASH/$FULLSUBJECTID.bval"   ;;
+					#         *.bvec)   mv -f "$file" "$NOTRAILSLASH/$FULLSUBJECTID.bvec"   ;;
+					#         *.json)   mv -f "$file" "$NOTRAILSLASH/$FULLSUBJECTID.json"   ;;
+					# 		*.txt)    mv -f "$file" "$NOTRAILSLASH/$FULLSUBJECTID.txt"   ;;
+					#     esac
+					# done
+
+					# copying part
+					# for file in "$NOTRAILSLASH"/*; do
+					#     case "$file" in
+					#         *.nii.gz) dest="$NOTRAILSLASH/$FULLSUBJECTID.nii.gz" ;;
+					#         *.bval)   dest="$NOTRAILSLASH/$FULLSUBJECTID.bval"   ;;
+					#         *.bvec)   dest="$NOTRAILSLASH/$FULLSUBJECTID.bvec"   ;;
+					#         *.json)   dest="$NOTRAILSLASH/$FULLSUBJECTID.json"   ;;
+					#         *.txt)    dest="$NOTRAILSLASH/$FULLSUBJECTID.txt"    ;;
+					#         *)        continue ;;
+					#     esac
+
+					#     # Skip if source and destination are the same
+					#     if [[ "$file" != "$dest" ]]; then
+					#         cp -f "$file" "$dest"
+					#     fi
+					# done
+
+
+					# mrinfo "$NOTRAILSLASH/$FULLSUBJECTID.nii.gz"
+
+					# if we want to process only dual echo data
+					# NSIZE4=$(mrinfo -size "$NOTRAILSLASH/$FULLSUBJECTID.nii.gz" -quiet | awk '{print $4}')
+					# # echo "NSIZE4: $NSIZE4"
+
+					# if [[ $NSIZE4 != 186 ]]; then
+     #        			echo "Opaaaaaa $NSIZE4"
+     #        			continue
+     #        		else
+     #        			echo "NSIZE4: $NOTRAILSLASH"
+     #    			fi
+
+
 					# Create config file
-					bash ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -l "$NOLOCKS" -o "$CONFIG_FILE"
+					bash ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -g "$REGSTRAT" -l "$NOLOCKS" -o "$CONFIG_FILE"
 
 					# Processing data
 					bash ${DMRISCRIPTS}/dMRI_HAITCH.sh "${CONFIG_FILE}"

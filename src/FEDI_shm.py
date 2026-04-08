@@ -309,7 +309,7 @@ def real_sym_sh_brainsuite(sh_order, theta, phi):
         start_index = int(ell*(ell-1)/2)
         end_index = int((ell+1)*(ell+2)/2)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', np.ComplexWarning)
+            warnings.simplefilter('ignore', np.exceptions.ComplexWarning)
             S[:, start_index:end_index] = Pell
         L[start_index:end_index] = ell
         Z[start_index:end_index] = np.arange(-ell, ell+1)

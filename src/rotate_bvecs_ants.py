@@ -58,7 +58,8 @@ for bvec, mat in zip(bvecs, in_matrix):
         new_bvecs.append((newbvec / np.linalg.norm(newbvec)))
 
 # Save new bvecs
-np.savetxt(args.bvecsnew, np.array(new_bvecs).T, fmt=b'%0.15f')
+np.savetxt(args.bvecsnew, np.array(new_bvecs).T, fmt='%0.15f')
+
 
 
 
