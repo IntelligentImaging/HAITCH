@@ -91,7 +91,7 @@ if [ -d "$INPATHSUB" ]; then
     # Search for the input and phase files based on DWIMODALITY
     case "$DWIMODALITY" in
         dMRI56[7-8])
-            INPUT=$(find "$INPATHSUB" -type f -name "*_dMRI*.nii.gz")
+            INPUT=$(find "$INPATHSUB" -maxdepth 1 -type f -name "*_dMRI*.nii.gz")
             ;;
         "dwiME")
             INPUT=$(find "$INPATHSUB" -type f -name "*_dwiME*.nii.gz")
@@ -422,8 +422,8 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
         for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
             TE=$((VIDX % NUMBER_ECHOTIME + 1))
             VNUM=$((VIDX / NUMBER_ECHOTIME))
-            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_odd.mif"   "${SEGMENTATION_DIR}/working_odd_TE${TE}_v${VNUM}.nii.gz"
-            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_even.mif" "${SEGMENTATION_DIR}/working_even_TE${TE}_v${VNUM}.nii.gz"
+            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_odd.mif"   "${SEGMENTATION_DIR}/working_odd_TE${TE}_v${VNUM}.nii.gz" -quiet
+            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_even.mif" "${SEGMENTATION_DIR}/working_even_TE${TE}_v${VNUM}.nii.gz" -quiet
         done
     fi
 
@@ -432,8 +432,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
         TE=$((VIDX % NUMBER_ECHOTIME + 1))
         VNUM=$((VIDX / NUMBER_ECHOTIME))
-        mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwirc.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}.nii.gz" -force
-
+        mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwirc.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}.nii.gz" -force -quiet
     done
 
     # Fetal brain segmentation
@@ -500,7 +499,8 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
      for outmask in ${OUTPATHSUB}/segmentation/${segout}/*mask.nii.gz ; do
          maskbase=`basename $outmask`
          baseim=`echo $maskbase | sed -e 's,\(v[0-9]\+\)_.*mask.nii.gz,\1,g'`
-         mv -v ${outmask} ${SEGMENTATION_DIR}/${baseim}_mask.nii.gz
+         echo renaming masks
+         mv ${outmask} ${SEGMENTATION_DIR}/${baseim}_mask.nii.gz
      done
 
     if [[ -d ${OUTPATHSUB}/segmentation/${segin} ]] ; then rm -f ${OUTPATHSUB}/segmentation/${segin}/* ; fi # remove the input image copies
@@ -1887,13 +1887,19 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         mrconvert -fslgrad "${MOTIONCORREC_DIR}/rotated_bvecs3" "${BVALSTE}" "${lastspred}" \
             "${PRPROCESSING_DIR}/spredraw.mif" -force
 
-        mkdir -p "${PRPROCESSING_DIR}/quickseg"
+        mkdir -p "${PRPROCESSING_DIR}/quickseg/out"
         mrconvert -coord 3 0 "${PRPROCESSING_DIR}/spredraw.mif" "${PRPROCESSING_DIR}/quickseg/spredraw_v0.nii.gz" -force
 
-        DVD_SRC=/home/ch244310/software/dmri_segmentation_3d
-        python "${DVD_SRC}/dMRI_volume_segmentation.py" "${PRPROCESSING_DIR}/quickseg" \
-                                                       "${DVD_SRC}/model_checkpoint" \
-                                                       gpu_num=1
+
+        echo "Segment fetal brain script" # Clemente trying to recreate what Haykel did with his unavailable scripts
+            bash ${SRC}/segment_fetalbrain.sh --dmri ${PRPROCESSING_DIR}/quickseg/spredraw_v0.nii.gz \
+            --seg_tmp_dir ${PRPROCESSING_DIR}/quickseg/out/
+
+        # Clemente commented this out
+        #DVD_SRC=/home/ch244310/software/dmri_segmentation_3d
+        #python "${DVD_SRC}/dMRI_volume_segmentation.py" "${PRPROCESSING_DIR}/quickseg" \
+        #                                               "${DVD_SRC}/model_checkpoint" \
+        #                                               gpu_num=1
         # dilation_radius=1  # option not used
 
         dwi2tensor \

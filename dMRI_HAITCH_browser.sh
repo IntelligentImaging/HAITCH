@@ -122,12 +122,12 @@ for RUNDIR in $ALLRUNS ; do
 		SUBJECTID=${SUBJECTDIR##*/}
 
 
-		# if [[ $SESSION != 2024exex ]]; then
+		# if [[ $SESSION != 20240711 ]]; then
   #           # echo "Skipping $RUNDIR (session year not 2024: $SESSION)"
   #           continue
   #       fi
 
-  #       if [[ $SUBJECTID != "MRN1234" ]]; then
+  #       if [[ $SUBJECTID != "6146148" ]]; then
   #           # echo "Skipping $RUNDIR (session year not 2024: $SESSION)"
   #           continue
   #       fi
