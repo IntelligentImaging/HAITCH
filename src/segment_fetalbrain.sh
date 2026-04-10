@@ -57,7 +57,7 @@ echo $NVOLUMES_PER_TE
 echo -e "n\Split 4D volume into 3D volumes"
 for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
 
-    mrconvert -coord 3 $VNUM "$DMRI" "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz"
+    mrconvert -coord 3 $VNUM "$DMRI" "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz" -quiet -force
 
 done
 
@@ -77,7 +77,7 @@ fi
 mkdir -vp ${SEG_TMP_DIR}/{$segin,$segout}
 chmod 777 ${SEG_TMP_DIR}/{$segin,$segout}
 mpath=`readlink -f ${SEG_TMP_DIR}` # mount path for container
-find ${SEG_TMP_DIR} -maxdepth 1 -regex '.*working_TE.*v[0-9]+.nii.gz' -a ! -name \*mask\* -exec cp {} -v ${SEG_TMP_DIR}/${segin}/ \;
+find ${SEG_TMP_DIR} -maxdepth 1 -regex '.*working_TE.*v[0-9]+.nii.gz' -a ! -name \*mask\* -exec cp {} ${SEG_TMP_DIR}/${segin}/ \;
 # Both scripts segment all 3D volumes in the input path
 if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
     if [[ $SING = 1 ]] ; then
@@ -135,35 +135,37 @@ if [[ -d ${SEG_TMP_DIR}/${segin} ]] ; then rm -f ${SEG_TMP_DIR}/${segin}/* ; fi 
 #
 # # # # End of local installation brain masking
 
-# # Skull Stripping data
-DWI_LIST1=""
-VNUM=0
-echo -e "\nSkull-Strip data"
+# # Skull Stripping data # # (Averaging of all masks only happens if arguments for output per-volume masks/cropped images are given, otherwise you can use this script to segment a single image)
+if [[ -n $DMRISKPERVOLUME && -n $DMRISK ]] ; then
 
-for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
-    mrcalc "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz" "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}_mask.nii.gz" -multiply "${SEG_TMP_DIR}/workingsk_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz" -force -quiet
-    DWI_LIST1+="${SEG_TMP_DIR}/workingsk_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz "
-done
+    DWI_LIST1=""
+    VNUM=0
+    echo -e "\nSkull-Strip data"
 
-mrcat -axis 3 $DWI_LIST1 "$DMRISKPERVOLUME" -force -quiet
+    for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
+        mrcalc "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz" "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}_mask.nii.gz" -multiply "${SEG_TMP_DIR}/workingsk_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz" -force -quiet
+        DWI_LIST1+="${SEG_TMP_DIR}/workingsk_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz "
+    done
 
-
-# Create Union_mask
-echo -e "\nCreate Union Mask"
-mrconvert "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v0_mask.nii.gz" "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" -force -quiet
-
-for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
-    # Keep the largest connected segmented region
-    maskfilter -largest "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}_mask.nii.gz" connect "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}_mask.nii.gz" -force -quiet
-
-    mrcalc "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}_mask.nii.gz" -max "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" -force  -quiet
-done
+    mrcat -axis 3 $DWI_LIST1 "$DMRISKPERVOLUME" -force -quiet
 
 
+    # Create Union_mask
+    echo -e "\nCreate Union Mask"
+    mrconvert "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v0_mask.nii.gz" "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" -force -quiet
 
+    for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
+        # Keep the largest connected segmented region
+        maskfilter -largest "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}_mask.nii.gz" connect "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}_mask.nii.gz" -force -quiet
 
+        mrcalc "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}_mask.nii.gz" -max "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" -force  -quiet
+    done
 
-mrconvert "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" "$MASK" -force -quiet
+    mrconvert "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" "$MASK" -force -quiet
+    mrcalc "$DMRI" "$MASK" -multiply "$DMRISK" -force -quiet
 
+else
 
-mrcalc "$DMRI" "$MASK" -multiply "$DMRISK" -force -quiet
+    echo "No skull-strip per-volume arguments supplied, so we wont try to average any masks"
+
+fi

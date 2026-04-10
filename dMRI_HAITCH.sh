@@ -416,8 +416,8 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
         for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
             TE=$((VIDX % NUMBER_ECHOTIME + 1))
             VNUM=$((VIDX / NUMBER_ECHOTIME))
-            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_odd.mif"   "${SEGMENTATION_DIR}/working_odd_TE${TE}_v${VNUM}.nii.gz"
-            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_even.mif" "${SEGMENTATION_DIR}/working_even_TE${TE}_v${VNUM}.nii.gz"
+            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_odd.mif"   "${SEGMENTATION_DIR}/working_odd_TE${TE}_v${VNUM}.nii.gz" -quiet
+            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_even.mif" "${SEGMENTATION_DIR}/working_even_TE${TE}_v${VNUM}.nii.gz" -quiet
         done
     fi
 
@@ -426,7 +426,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
     for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
         TE=$((VIDX % NUMBER_ECHOTIME + 1))
         VNUM=$((VIDX / NUMBER_ECHOTIME))
-        mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwirc.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}.nii.gz" -force
+        mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwirc.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}.nii.gz" -force -quiet
 
     done
 
@@ -594,7 +594,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
         fi
     done
 
-    mrcat -axis 3 $DWI_CROPSK_LIST "${PRPROCESSING_DIR}/dwicropsk.nii.gz" -force
+    mrcat -axis 3 $DWI_CROPSK_LIST "${PRPROCESSING_DIR}/dwicropsk.nii.gz" -force -quiet
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -1827,10 +1827,11 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
         mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${lastspred} ${PRPROCESSING_DIR}/spredraw.mif -force
 
         mrgrid ${PRPROCESSING_DIR}/spredraw.mif regrid -vox 1.25 ${PRPROCESSING_DIR}/spred.mif -force # upsamled
+        mrconvert "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred.nii.gz" -force # used for manual regs or checking intermediate steps
 
         echo "Register DWI to T2"
-        if [[ $REGSTRAT == "manual" ]]; then
-            echo method: manual
+        if [[ $REGSTRAT == "manual" || -f ${REGISTRATION_DIR}/MANUAL_REG_MATRIX.txt ]]; then
+            echo "method: manual (default if REG/MANUAL_REG_MATRIX.txt exists)"
 
             # Start by SLICER OR ITKSNAP to get MANUAL_REG_MATRIX ... preprocessing/spred_0.nii.gz to T2WXFM/*_t2w-t2space.nii.gz
             transformconvert ${REGISTRATION_DIR}/MANUAL_REG_MATRIX.txt itk_import ${REGISTRATION_DIR}/itk_mrtrixslicer.mat -force
@@ -1841,7 +1842,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
             echo method: ANTS
   	        OUTANTS="${REGISTRATION_DIR}/ANTSrigid_to_t2"
   	        ANTSXFM=${OUTANTS}Affine.txt
-  	        mrconvert "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred.nii.gz"
 
   	        if [[ ! -f ${OUTANTS}/ANTSrigid_to_t2.nii.gz ]] ; then
   		          echo "Running ANTS"

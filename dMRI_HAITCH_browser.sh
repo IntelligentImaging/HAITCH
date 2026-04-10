@@ -14,12 +14,13 @@
 
 show_help () {
 cat << EOF
-    USAGE: sh ${0##*/} [project directory]
+    USAGE: sh ${0##*/} [optional arguments] -- [project directory]
     This script starts the FEDI pipeline. Supply the project directory.
     data, protocols, and scripts directories specified in script.
 
     -i LIST.txt Specify an input text list of input data folder run paths (data/sub-x/sx/dwi/runx)
-    -l			Ignore any existing locks		
+    -l			Ignore any existing locks
+    -d			Run config and pipeline script with bash -x debug
 
 EOF
 }
@@ -45,6 +46,9 @@ while :; do
             ;;
 		-l|--ignore-locks)
 	    	let NOLOCKS=1
+	    	;;
+	    -d|--debug)
+	    	export DEBUGFLAG="-x"
 	    	;;
         --) # end of optionals
             shift
@@ -100,8 +104,10 @@ fi
 let xcount=0
 for RUNDIR in ${ALLRUNS[@]} ; do
 	# Match t2 recon and registration methods to current csv row
-	export T2W_RECON_METHOD=${T2_RECON_METHOD_ar[$xcount]}
-	export REGSTRAT=${REGSTRAT_ar[$xcount]}
+	if [[ -n $INLIST ]] ; then
+		export T2W_RECON_METHOD=${T2_RECON_METHOD_ar[$xcount]}
+		export REGSTRAT=${REGSTRAT_ar[$xcount]}
+	fi
 	((xcount++)) # increment array
 
 	if [ -d $RUNDIR ] ; then
@@ -109,7 +115,7 @@ for RUNDIR in ${ALLRUNS[@]} ; do
 		# Set the scan data paths and identifiers
 		NOTRAILSLASH=${RUNDIR%/}
 		RUNNUMBER=${NOTRAILSLASH##*/}
-		MODALITYDIR=${RUNDIR%/*}
+		MODALITYDIR=${NOTRAILSLASH%/*}
 		MODALITY=${MODALITYDIR##*/}
 		SESSIONDIR=${MODALITYDIR%/*}
 		SESSION=${SESSIONDIR##*/}
@@ -145,10 +151,10 @@ for RUNDIR in ${ALLRUNS[@]} ; do
 					CONFIG_FILE="${OUTPATHSUB}/${PROTOCOL}_local-config_${FULLSUBJECTID}.sh"
 
 					# Create config file
-					bash ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -l "$NOLOCKS" -o "$CONFIG_FILE"
+					bash ${DEBUGFLAG} ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -l "$NOLOCKS" -o "$CONFIG_FILE"
 
 					# Processing data
-					bash ${DMRISCRIPTS}/dMRI_HAITCH.sh "${CONFIG_FILE}"
+					bash ${DEBUGFLAG} ${DMRISCRIPTS}/dMRI_HAITCH.sh "${CONFIG_FILE}"
 
 					echo "====================================================="
 					echo "====================================================="
