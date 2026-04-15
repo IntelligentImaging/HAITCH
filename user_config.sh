@@ -39,6 +39,13 @@ fi
 export SEGMENTATION_METHOD="DAVOOD"
 #export SEGMENTATION_METHOD="RAZIEH"
 
+# Fix the DCPREFIX first, meaning which data will be used for the following steps. "dwicrop" or "dwicropsk"
+DCPREFIX="dwicrop"
+export DISTORTIONCORRECTION_METHOD="TOPUP"
+#export DISTORTIONCORRECTION_METHOD="EPIC"
+export DISTORTIONCORRECTION_WAY="CLASSIC"
+# DISTORTIONCORRECTION_WAY="VOLUMETOPUPONLY"
+
 # Choose whether to use singularity instead of docker for segmentation containers
 export SING=1
 #export SING=0
