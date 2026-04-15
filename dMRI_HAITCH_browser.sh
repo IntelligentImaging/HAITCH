@@ -19,6 +19,10 @@ cat << EOF
     data, protocols, and scripts directories specified in script.
 
     -i LIST.txt Specify an input text list of input data folder run paths (data/sub-x/sx/dwi/runx)
+    			List should be formatted data/sub-x/sx/dwi/runx,RECON,REG
+    			Where RECON is "svrtk", "niftymic", or blank for default
+    			and REG is "manual", "flirt", "ants", or blank for default
+    			
     -l			Ignore any existing locks		
 
 EOF
@@ -45,6 +49,9 @@ while :; do
             ;;
 		-l|--ignore-locks)
 	    	let NOLOCKS=1
+	    	;;
+	    -d|--debug)
+	    	DEBUG="-x"
 	    	;;
         --) # end of optionals
             shift
@@ -117,7 +124,7 @@ for RUNDIR in ${ALLRUNS[@]} ; do
 		SUBJECTID=${SUBJECTDIR##*/}
 
 		case $MODALITY in
-			dwi|dwiHARDI|dwiME) # dwi|dwiHARDI|dwiME (only processing diffusion)
+			dwi|dwiHARDI|dwiME|dwi_me) # only processing diffusion
 				if [[ -e $RUNDIR/lock && ! $NOLOCKS = 1 ]] ; then
 
 				  echo "====================================================="
@@ -145,10 +152,10 @@ for RUNDIR in ${ALLRUNS[@]} ; do
 					CONFIG_FILE="${OUTPATHSUB}/${PROTOCOL}_local-config_${FULLSUBJECTID}.sh"
 
 					# Create config file
-					bash ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -l "$NOLOCKS" -o "$CONFIG_FILE"
+					bash ${DEBUG} ${DMRISCRIPTS}/dMRI_HAITCH_local-config.sh -d "$PROJDIR" -p "$PROTOCOL" -i "$SUBJECTID" -s "$SESSION" -m $MODALITY -r "$RUNNUMBER" -l "$NOLOCKS" -o "$CONFIG_FILE"
 
 					# Processing data
-					bash ${DMRISCRIPTS}/dMRI_HAITCH.sh "${CONFIG_FILE}"
+					bash ${DEBUG} ${DMRISCRIPTS}/dMRI_HAITCH.sh "${CONFIG_FILE}"
 
 					echo "====================================================="
 					echo "====================================================="
