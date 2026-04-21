@@ -1812,9 +1812,18 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
 
     if [[ -e ${FILES[0]} ]] && [[ -e "${BVALSTE}" ]]; then
 
-        T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.nii.gz"
-        T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/anat/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w.nii.gz"
-        XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.tfm"
+        if [[ ! -n $T2W_RECON_METHOD ]] ; then
+            # default
+            T2W_ORIGIN_SPACE=`find ${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/ -name ${SUBJECTID}_${DWISESSION}_rec-\*_t2w-t2space.nii.gz | sort | head -n1`
+            T2W_ATLAS_SPACE=`find ${T2W_DATA}/${SUBJECTID}/${DWISESSION}/anat/ -name ${SUBJECTID}_${DWISESSION}_rec-\*_t2w.nii.gz | sort | head -n1`
+            XFM=`find ${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/ -name ${SUBJECTID}_${DWISESSION}_rec-\*_t2w-t2space.tfm | sort | head -n1`
+
+        else
+            # user specified
+            T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.nii.gz"
+            T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/anat/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w.nii.gz"
+            XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.tfm"
+        fi
 
         cp ${T2W_ORIGIN_SPACE} ${T2WXFM_FILES_DIR}/.
         cp ${T2W_ATLAS_SPACE} ${T2WXFM_FILES_DIR}/.
