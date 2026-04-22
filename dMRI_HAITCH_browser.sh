@@ -22,6 +22,10 @@ cat << EOF
     			List should be formatted data/sub-x/sx/dwi/runx,RECON,REG
     			Where RECON is "svrtk", "niftymic", or blank for default
     			and REG is "manual", "flirt", "ants", or blank for default
+
+    -n			No overwrite mode: Will skip steps for which the ultimate output file is found.
+
+    -d			Debug mode: Runs config and main script with 'bash -x'
     			
     -l			Ignore any existing locks		
 
@@ -49,6 +53,9 @@ while :; do
             ;;
 		-l|--ignore-locks)
 	    	let NOLOCKS=1
+	    	;;
+	    -n|--no-overwrite)
+	    	export NOOVER=1
 	    	;;
 	    -d|--debug)
 	    	DEBUG="-x"
