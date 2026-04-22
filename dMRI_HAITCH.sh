@@ -312,28 +312,31 @@ echo "--------------------------------------------------------------------------
 # STEP 1: STEP1_DWI_DENOISE_USING_GSVS
 if [[ $NOLOCKS = 1 && -e ${LOCK1} && ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] ; then rm ${LOCK1} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP1_DWI_DENOISE_USING_GSVS"]} == "TODO" ]] && [[ ! -e ${LOCK1} ]] ; then
-
-    touch ${LOCK1}
-
-    if [ -n "$PHASE" ]; then
-        echo "To be done later"
-        # Good for better pipeline, but not important right now. To do it later
-        # if there is phase, we will not have to apply rician correction
-        # mrcalc DICOM_DWI_mag/ DICOM_DWI_phase/ pi 4096 -div -mult -polar complex.mif
-        # dwidenoise complex.mif complex_dn.mif -noise noisemap.mif
-        # mrcalc complex.mif complex_dn.mif complex_dn.mif -abs -div -conj -mult complex_pc.mif
-        # dwidenoise complex_pc.mif denoised_pc_dn.mif -noise noisemap_pc.mif
-        # mrcalc denoised_pc_dn.mif -abs denoised_pc_dn_mag.mif
-
+    if [[ -f ${PRPROCESSING_DIR}/dwidenoise_residuals.mif && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
     else
 
-        echo -e "\n ${STEPX}.|--->  dMRI noise level estimation and denoising using GSVS  ---"
-        # Exp2 option : the improved estimator GSVS introduced in Cordero-Grande et al. (2019).
-        mrconvert $INPUT -set_property comments "FEDI Pipeline" $INPUT -force
-        dwidenoise -noise ${PRPROCESSING_DIR}/fullnoisemap.mif -estimator Exp2 $INPUT ${PRPROCESSING_DIR}/dwide.mif -nthreads $MRTRIX_NTHREADS -force
-        # Eyeballing the residuals
-        mrcalc $INPUT ${PRPROCESSING_DIR}/dwide.mif -subtract ${PRPROCESSING_DIR}/dwidenoise_residuals.mif -force
+        touch ${LOCK1}
 
+        if [ -n "$PHASE" ]; then
+            echo "To be done later"
+            # Good for better pipeline, but not important right now. To do it later
+            # if there is phase, we will not have to apply rician correction
+            # mrcalc DICOM_DWI_mag/ DICOM_DWI_phase/ pi 4096 -div -mult -polar complex.mif
+            # dwidenoise complex.mif complex_dn.mif -noise noisemap.mif
+            # mrcalc complex.mif complex_dn.mif complex_dn.mif -abs -div -conj -mult complex_pc.mif
+            # dwidenoise complex_pc.mif denoised_pc_dn.mif -noise noisemap_pc.mif
+            # mrcalc denoised_pc_dn.mif -abs denoised_pc_dn_mag.mif
+
+        else
+
+            echo -e "\n ${STEPX}.|--->  dMRI noise level estimation and denoising using GSVS  ---"
+            # Exp2 option : the improved estimator GSVS introduced in Cordero-Grande et al. (2019).
+            mrconvert $INPUT -set_property comments "FEDI Pipeline" $INPUT -force
+            dwidenoise -noise ${PRPROCESSING_DIR}/fullnoisemap.mif -estimator Exp2 $INPUT ${PRPROCESSING_DIR}/dwide.mif -nthreads $MRTRIX_NTHREADS -force
+            # Eyeballing the residuals
+            mrcalc $INPUT ${PRPROCESSING_DIR}/dwide.mif -subtract ${PRPROCESSING_DIR}/dwidenoise_residuals.mif -force
+
+        fi
     fi
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
@@ -344,18 +347,21 @@ echo "--------------------------------------------------------------------------
 # STEP 2: STEP2_MRDEGIBBS_RINGING_ARTI
 if [[ $NOLOCKS = 1 && -e ${LOCK2} && ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] ; then rm ${LOCK2} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP2_MRDEGIBBS_RINGING_ARTI"]}  == "TODO" ]] && [[ ! -e ${LOCK2} ]] ; then
+    if [[ -f ${PRPROCESSING_DIR}/dwigb.mif && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
+    else
 
-    touch ${LOCK2}
+        touch ${LOCK2}
 
-    # Kellner et al., 2016
-    echo -e "\n ${STEPX}.|--->  Remove Gibbs Ringing Artifacts  ---"
-    if [[ ${PROJNAME} == "BCH" ]]; then
-        python ${SRC}/create_grad5cls_index.py $GRAD4CLS $GRAD5CLS $INDX
+        # Kellner et al., 2016
+        echo -e "\n ${STEPX}.|--->  Remove Gibbs Ringing Artifacts  ---"
+        if [[ ${PROJNAME} == "BCH" ]]; then
+            python ${SRC}/create_grad5cls_index.py $GRAD4CLS $GRAD5CLS $INDX
+        fi
+        # mrtrix syntax allows piping of output/inputs using dashes "-". A dash in the output argument slot will pipe the output to the next command, a dash in the input argument slot will take the piped data from the previous command
+        # some mrtrix binaries including mrdegibbs require a folder named exactly "tmp" in the directory. As of this writing, a mkdir has been added earlier in the script.
+        mrdegibbs ${PRPROCESSING_DIR}/dwide.mif - | mrconvert - - -stride "$STRIDES" | mrconvert - -grad $GRAD5CLS -import_pe_eddy $ACQPARAM $INDX ${PRPROCESSING_DIR}/dwigb.mif -force
+
     fi
-    # mrtrix syntax allows piping of output/inputs using dashes "-". A dash in the output argument slot will pipe the output to the next command, a dash in the input argument slot will take the piped data from the previous command
-    # some mrtrix binaries including mrdegibbs require a folder named exactly "tmp" in the directory. As of this writing, a mkdir has been added earlier in the script.
-    mrdegibbs ${PRPROCESSING_DIR}/dwide.mif - | mrconvert - - -stride "$STRIDES" | mrconvert - -grad $GRAD5CLS -import_pe_eddy $ACQPARAM $INDX ${PRPROCESSING_DIR}/dwigb.mif -force
-
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -365,38 +371,41 @@ echo "--------------------------------------------------------------------------
 # STEP 3: STEP3_RICIAN_BIAS_CORRECTION
 if [[ $NOLOCKS = 1 && -e ${LOCK3} && ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] ; then rm ${LOCK3} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP3_RICIAN_BIAS_CORRECTION"]}  == "TODO" ]] && [[ ! -e ${LOCK3} ]] ; then
+    if [[ -f ${PRPROCESSING_DIR}/dwirc.mif && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
+    else
 
-    touch ${LOCK3}
+        touch ${LOCK3}
 
-    RICIAN_WAY="LOWSNR"
+        RICIAN_WAY="LOWSNR"
 
-    # Ades-Aron et al., 2019
-    echo -e "\n ${STEPX}.|--->  Rician Bias Correction   ---"
+        # Ades-Aron et al., 2019
+        echo -e "\n ${STEPX}.|--->  Rician Bias Correction   ---"
 
-    if [[ ${RICIAN_WAY} == "LOWSNR" ]]; then
+        if [[ ${RICIAN_WAY} == "LOWSNR" ]]; then
 
-        # Noise map estimated from low bvalue images only
-        # Determine the loweste b-values
-        LOWBvalue=$(awk '{for (i=1; i<=NF; i++) if ($i > 0 && (!min || $i < min)) min=$i} END {print min}' "$BVALS")
+            # Noise map estimated from low bvalue images only
+            # Determine the loweste b-values
+            LOWBvalue=$(awk '{for (i=1; i<=NF; i++) if ($i > 0 && (!min || $i < min)) min=$i} END {print min}' "$BVALS")
 
-        dwiextract -grad $GRAD5CLS -shell $LOWBvalue $INPUT ${PRPROCESSING_DIR}/dwiLowBval.mif -force
-        dwidenoise -noise ${PRPROCESSING_DIR}/lowbvalnoisemap.mif -estimator Exp2 ${PRPROCESSING_DIR}/dwiLowBval.mif ${PRPROCESSING_DIR}/dwitmp.mif -nthreads $MRTRIX_NTHREADS -force
+            dwiextract -grad $GRAD5CLS -shell $LOWBvalue $INPUT ${PRPROCESSING_DIR}/dwiLowBval.mif -force
+            dwidenoise -noise ${PRPROCESSING_DIR}/lowbvalnoisemap.mif -estimator Exp2 ${PRPROCESSING_DIR}/dwiLowBval.mif ${PRPROCESSING_DIR}/dwitmp.mif -nthreads $MRTRIX_NTHREADS -force
 
-        NOISE_MAP=${PRPROCESSING_DIR}/lowbvalnoisemap.mif
+            NOISE_MAP=${PRPROCESSING_DIR}/lowbvalnoisemap.mif
+        fi
+
+        if [[ ! -e $NOISE_MAP  ]] || [[ ${RICIAN_WAY} == "STANDARD" ]]; then
+
+             # Noise map estimated from full volumes
+            NOISE_MAP=${PRPROCESSING_DIR}/fullnoisemap.mif
+
+        fi
+
+        mrcalc ${NOISE_MAP} -finite ${NOISE_MAP} 0 -if ${PRPROCESSING_DIR}/finitenoisemap.mif -force
+        mrcalc ${PRPROCESSING_DIR}/dwigb.mif 2 -pow ${PRPROCESSING_DIR}/finitenoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if ${PRPROCESSING_DIR}/dwirc.mif -force
+
+        mrconvert ${PRPROCESSING_DIR}/dwirc.mif -grad $GRAD5CLS -import_pe_eddy $ACQPARAM $INDX ${PRPROCESSING_DIR}/dwirc.mif -force
+
     fi
-
-    if [[ ! -e $NOISE_MAP  ]] || [[ ${RICIAN_WAY} == "STANDARD" ]]; then
-
-         # Noise map estimated from full volumes
-        NOISE_MAP=${PRPROCESSING_DIR}/fullnoisemap.mif
-
-    fi
-
-    mrcalc ${NOISE_MAP} -finite ${NOISE_MAP} 0 -if ${PRPROCESSING_DIR}/finitenoisemap.mif -force
-    mrcalc ${PRPROCESSING_DIR}/dwigb.mif 2 -pow ${PRPROCESSING_DIR}/finitenoisemap.mif 2 -pow -sub -abs -sqrt - | mrcalc - -finite - 0 -if ${PRPROCESSING_DIR}/dwirc.mif -force
-
-    mrconvert ${PRPROCESSING_DIR}/dwirc.mif -grad $GRAD5CLS -import_pe_eddy $ACQPARAM $INDX ${PRPROCESSING_DIR}/dwirc.mif -force
-
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -406,110 +415,113 @@ echo "--------------------------------------------------------------------------
 # STEP 4: STEP4_FETAL_BRAIN_EXTRACTION
 if [[ $NOLOCKS = 1 && -e ${LOCK4} && ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] ; then rm ${LOCK4} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] && [[ ! -e ${LOCK4} ]] ; then
+    if [[ -f "${QUAL_CONTROL_DIR}/${SUBJECTID}_SegmStep4_outliers_volume_index.txt" && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
+    else
 
-    touch ${LOCK4}
+        touch ${LOCK4}
 
-    echo -e "\n${STEPX}.|---> Brain extraction ---"
+        echo -e "\n${STEPX}.|---> Brain extraction ---"
 
-    SPLIT_INTO_ODDEVEN="NO"
-    if [[ $SPLIT_INTO_ODDEVEN == "YES" ]]; then
-        # create odd and even 4D volumes. 4D-Odd/even contains all odd/even slices for all directions
-        # I am considering i=0 (slice number 1) as odd
-        NSLICES_ODD=$(seq 0 2 $((NSLICES - 1)) | tr '\n' ',')
-        NSLICES_EVEN=$(seq 1 2 $((NSLICES - 1)) | tr '\n' ',')
-        NSLICES_ODD=${NSLICES_ODD%,}
-        NSLICES_EVEN=${NSLICES_EVEN%,}
-        mrconvert -coord $AXSLICES $NSLICES_ODD "${PRPROCESSING_DIR}/dwirc.mif" "${OUTPATHSUB}/working_odd.mif" -force
-        mrconvert -coord $AXSLICES $NSLICES_EVEN "${PRPROCESSING_DIR}/dwirc.mif" "${OUTPATHSUB}/working_even.mif" -force
+        SPLIT_INTO_ODDEVEN="NO"
+        if [[ $SPLIT_INTO_ODDEVEN == "YES" ]]; then
+            # create odd and even 4D volumes. 4D-Odd/even contains all odd/even slices for all directions
+            # I am considering i=0 (slice number 1) as odd
+            NSLICES_ODD=$(seq 0 2 $((NSLICES - 1)) | tr '\n' ',')
+            NSLICES_EVEN=$(seq 1 2 $((NSLICES - 1)) | tr '\n' ',')
+            NSLICES_ODD=${NSLICES_ODD%,}
+            NSLICES_EVEN=${NSLICES_EVEN%,}
+            mrconvert -coord $AXSLICES $NSLICES_ODD "${PRPROCESSING_DIR}/dwirc.mif" "${OUTPATHSUB}/working_odd.mif" -force
+            mrconvert -coord $AXSLICES $NSLICES_EVEN "${PRPROCESSING_DIR}/dwirc.mif" "${OUTPATHSUB}/working_even.mif" -force
+            echo "Split 4D volume into 3D volumes"
+            for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
+                TE=$((VIDX % NUMBER_ECHOTIME + 1))
+                VNUM=$((VIDX / NUMBER_ECHOTIME))
+                mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_odd.mif"   "${SEGMENTATION_DIR}/working_odd_TE${TE}_v${VNUM}.nii.gz"
+                mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_even.mif" "${SEGMENTATION_DIR}/working_even_TE${TE}_v${VNUM}.nii.gz"
+            done
+        fi
+
+        # Split the 4D volume(s) into 3D volumes
         echo "Split 4D volume into 3D volumes"
         for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
             TE=$((VIDX % NUMBER_ECHOTIME + 1))
             VNUM=$((VIDX / NUMBER_ECHOTIME))
-            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_odd.mif"   "${SEGMENTATION_DIR}/working_odd_TE${TE}_v${VNUM}.nii.gz"
-            mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_even.mif" "${SEGMENTATION_DIR}/working_even_TE${TE}_v${VNUM}.nii.gz"
+            mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwirc.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}.nii.gz" -force
+
         done
-    fi
 
-    # Split the 4D volume(s) into 3D volumes
-    echo "Split 4D volume into 3D volumes"
-    for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
-        TE=$((VIDX % NUMBER_ECHOTIME + 1))
-        VNUM=$((VIDX / NUMBER_ECHOTIME))
-        mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwirc.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}.nii.gz" -force
+        # Fetal brain segmentation
+        echo
+        echo "============ dMRI Segmentation ============"
+        echo "Segmentation Method: $SEGMENTATION_METHOD"
+        if [[ $SEGMENTATION_METHOD == "DAVOOD" ]] ; then
+            segin="dmri3d" ; segout="dmri3d"
+        elif [[ $SEGMENTATION_METHOD == "RAZIEH" ]] ; then
+            segin="inputs" ; segout="fetal-bet"
+        else echo SEGMENTATION_METHOD supplied in config is invalid
+            exit
+        fi 
 
-    done
+        # make a subdirectory to feed into segmentation code and copy images there
+        mkdir -vp ${OUTPATHSUB}/segmentation/{$segin,$segout}
+        chmod 777 ${OUTPATHSUB}/segmentation/{$segin,$segout}
+        mpath=`readlink -f ${OUTPATHSUB}` # mount path for container
+        find ${OUTPATHSUB}/segmentation -maxdepth 1 -regex '.*working_TE.*v[0-9]+.nii.gz' -a ! -name \*mask\* -exec cp {} -v ${OUTPATHSUB}/segmentation/${segin}/ \;
 
-    # Fetal brain segmentation
-    echo
-    echo "============ dMRI Segmentation ============"
-    echo "Segmentation Method: $SEGMENTATION_METHOD"
-    if [[ $SEGMENTATION_METHOD == "DAVOOD" ]] ; then
-        segin="dmri3d" ; segout="dmri3d"
-    elif [[ $SEGMENTATION_METHOD == "RAZIEH" ]] ; then
-        segin="inputs" ; segout="fetal-bet"
-    else echo SEGMENTATION_METHOD supplied in config is invalid
-        exit
-    fi 
+        # Both scripts segment all 3D volumes in the input path
+        if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
 
-    # make a subdirectory to feed into segmentation code and copy images there
-    mkdir -vp ${OUTPATHSUB}/segmentation/{$segin,$segout}
-    chmod 777 ${OUTPATHSUB}/segmentation/{$segin,$segout}
-    mpath=`readlink -f ${OUTPATHSUB}` # mount path for container
-    find ${OUTPATHSUB}/segmentation -maxdepth 1 -regex '.*working_TE.*v[0-9]+.nii.gz' -a ! -name \*mask\* -exec cp {} -v ${OUTPATHSUB}/segmentation/${segin}/ \;
+            if [[ $SING = 1 ]] ; then
+                echo Running dmri3d container with singularity
+                singularity exec docker://arfentul/dmri3d /bin/bash -c "python /src/dMRI_volume_segmentation.py ${OUTPATHSUB}/segmentation/${segin}/ /src/ gpu_num=0 dilation_radius=-1"
+            else
 
-    # Both scripts segment all 3D volumes in the input path
-    if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
+                echo "Pulling dmri3d docker container"
+                docker pull arfentul/dmri3d # pull docker image
+        
+                # Mask dwi with dMRI3d
+                docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/dmri3d /bin/bash -c \
+                "python /src/dMRI_volume_segmentation.py /workspace/segmentation/${segin}/ /src/ gpu_num=0 dilation_radius=-1 ; chmod 666 /workspace/segmentation/${segin}/*mask.nii.gz"
+                echo
+            fi
 
-        if [[ $SING = 1 ]] ; then
-            echo Running dmri3d container with singularity
-            singularity exec docker://arfentul/dmri3d /bin/bash -c "python /src/dMRI_volume_segmentation.py ${OUTPATHSUB}/segmentation/${segin}/ /src/ gpu_num=0 dilation_radius=-1"
+        elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
+
+            if [[ $SING = 1 ]] ; then
+                echo Running dmri3d container with singularity
+                singularity exec docker://fetalbet-model /bin/bash -c "python /app/src/codes/inference.py --data_path ${OUTPATHSUB}/segmentation/${segin}/ --save_path ${OUTPATHSUB}/segmentation/${segout}/ --saved_model_path /app/src/model/AttUNet.pth"
+            else
+
+                echo "Pulling fetal-bet docker container"
+                docker pull arfentul/fetalbet-model # pull docker image
+
+                # Mask dwi with Fetal-BET
+                docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
+                "python /app/src/codes/inference.py --data_path /workspace/segmentation/${segin} --save_path /workspace/segmentation/${segout} --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/${segout}/*mask.nii.gz"
+                echo
+            fi
+
         else
-
-            echo "Pulling dmri3d docker container"
-            docker pull arfentul/dmri3d # pull docker image
-    
-            # Mask dwi with dMRI3d
-            docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/dmri3d /bin/bash -c \
-            "python /src/dMRI_volume_segmentation.py /workspace/segmentation/${segin}/ /src/ gpu_num=0 dilation_radius=-1 ; chmod 666 /workspace/segmentation/${segin}/*mask.nii.gz"
-            echo
+            echo "SEGMENTATION_METHOD specified in $0 is invalid"
+            exit
         fi
 
-    elif [[ ${SEGMENTATION_METHOD}  == "RAZIEH" ]]; then
+        # rename output files
+        echo "moving dwi brain masks to ${SEGMENTATION_DIR}"
+        for outmask in ${OUTPATHSUB}/segmentation/${segout}/*mask.nii.gz ; do
+            maskbase=`basename $outmask`
+            baseim=`echo $maskbase | sed -e 's,\(v[0-9]\+\)_.*mask.nii.gz,\1,g'`
+            mv -v ${outmask} ${SEGMENTATION_DIR}/${baseim}_mask.nii.gz
+        done
 
-        if [[ $SING = 1 ]] ; then
-            echo Running dmri3d container with singularity
-            singularity exec docker://fetalbet-model /bin/bash -c "python /app/src/codes/inference.py --data_path ${OUTPATHSUB}/segmentation/${segin}/ --save_path ${OUTPATHSUB}/segmentation/${segout}/ --saved_model_path /app/src/model/AttUNet.pth"
-        else
+        if [[ -d ${OUTPATHSUB}/segmentation/${segin} ]] ; then rm -f ${OUTPATHSUB}/segmentation/${segin}/* ; fi # remove the input image copies
 
-            echo "Pulling fetal-bet docker container"
-            docker pull arfentul/fetalbet-model # pull docker image
+        # Plot segmentation outliers
+        for ((TE=1; TE<$((NUMBER_ECHOTIME+1)); TE++)); do
+            python ${SRC}/segm_outliers.py -d "${SEGMENTATION_DIR}" -s "working_TE${TE}" -e "_mask.nii.gz" -o "${QUAL_CONTROL_DIR}/${SUBJECTID}_SegmStep4"
+        done
 
-            # Mask dwi with Fetal-BET
-            docker run -v --rm --mount type=bind,source=${mpath},target=/workspace arfentul/fetalbet-model:first /bin/bash -c \
-            "python /app/src/codes/inference.py --data_path /workspace/segmentation/${segin} --save_path /workspace/segmentation/${segout} --saved_model_path /app/src/model/AttUNet.pth ; chmod 666 /workspace/segmentation/${segout}/*mask.nii.gz"
-            echo
-        fi
-
-    else
-        echo "SEGMENTATION_METHOD specified in $0 is invalid"
-        exit
     fi
-
-    # rename output files
-    echo "moving dwi brain masks to ${SEGMENTATION_DIR}"
-    for outmask in ${OUTPATHSUB}/segmentation/${segout}/*mask.nii.gz ; do
-        maskbase=`basename $outmask`
-        baseim=`echo $maskbase | sed -e 's,\(v[0-9]\+\)_.*mask.nii.gz,\1,g'`
-        mv -v ${outmask} ${SEGMENTATION_DIR}/${baseim}_mask.nii.gz
-    done
-
-    if [[ -d ${OUTPATHSUB}/segmentation/${segin} ]] ; then rm -f ${OUTPATHSUB}/segmentation/${segin}/* ; fi # remove the input image copies
-
-    # Plot segmentation outliers
-    for ((TE=1; TE<$((NUMBER_ECHOTIME+1)); TE++)); do
-        python ${SRC}/segm_outliers.py -d "${SEGMENTATION_DIR}" -s "working_TE${TE}" -e "_mask.nii.gz" -o "${QUAL_CONTROL_DIR}/${SUBJECTID}_SegmStep4"
-    done
-
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -519,6 +531,8 @@ echo "--------------------------------------------------------------------------
 # STEP 5: STEP5_SPLIT_CROP_SKDATA_MASK
 if [[ $NOLOCKS = 1 && -e ${LOCK5} && ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] ; then rm ${LOCK5} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] && [[ ! -e ${LOCK5} ]] ; then
+    if [[ -f "${PRPROCESSING_DIR}/dwicropsk.nii.gz" && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
+    else
 
     touch ${LOCK5}
 
@@ -604,6 +618,8 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP5_SPLIT_CROP_SKDATA_MASK"]}  == "TODO" ]] 
     done
 
     mrcat -axis 3 $DWI_CROPSK_LIST "${PRPROCESSING_DIR}/dwicropsk.nii.gz" -force
+
+    fi
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -1477,123 +1493,126 @@ echo "--------------------------------------------------------------------------
 # STEP 7: STEP7_B1FIELDBIAS_CORRECTION
 if [[ $NOLOCKS = 1 && -e ${LOCK7} && ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] ; then rm ${LOCK7} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP7_B1FIELDBIAS_CORRECTION"]} == "TODO" ]] && [[ ! -e ${LOCK7} ]] ; then
-
-    touch ${LOCK7}
-    echo -e "\n${STEPX}.|--->  B1 Field Bias Correction   ---"
-
-    B1CORRECTIONWAY="Using_B0"
-    echo "EchoTime number is ${NUMBER_ECHOTIME}"
-
-
-    ############################################################
-    if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
-        BVALSTE="${BVALS}"
-        BVECSTE="${BVECS}"
-        GRAD4CLSTE="${GRAD4CLS}"
-
-        # Define the method for B1 correction. Options: "Using_B0", "Individually", "using_mask"
-        B1CORRECTIONWAY="Using_B0"
-
-        mrconvert "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwicrop.mif" -stride "$STRIDES" -force
-        # Make sure that ANTS's Inputs occupy the same physical space!
-        mrconvert "${PRPROCESSING_DIR}/union_maskcrop.nii.gz" - -stride "$STRIDES3D" | mrtransform - -template "${PRPROCESSING_DIR}/dwicrop.mif" -interp nearest "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -force
-
-        mrcalc "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -mult  "${PRPROCESSING_DIR}/dwibc_sk_TE1.mif" -force
-
-        if [[ $B1CORRECTIONWAY == "Using_B0" ]]; then
-            dwibiascorrect ants -mask "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -bias "${PRPROCESSING_DIR}/b1N4BiasField_TE1.mif" "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwibc_TE1.mif" -force
-            if [[ ! -e ${PRPROCESSING_DIR}/dwibc_TE1.mif ]]; then
-                dwibiascorrect ants -bias "${PRPROCESSING_DIR}/b1N4BiasField_TE1.mif" "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwibc_TE1.mif" -force
-            fi
-        elif [[ $B1CORRECTIONWAY == "Individually" ]]; then
-            echo "To be implemented/improved later"
-            # this option is not working : raise MRtrixError('DW gradient scheme contains different number of entries (' + str(len(dwi_header.keyval()['dw_scheme']))
-            # + ' to number of volumes in DWIs (' + dwi_header.size()[3] + ')'). Soome efforts should be done here to improve it. Read Maria Derpez and DESIGNER papers.
-                # DWImif=""
-                # mkdir -p "${PRPROCESSING_DIR}/tmp_bc"
-                # for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
-                #     mrconvert -coord 3  $VIDX  "${PRPROCESSING_DIR}/dwirc.mif"  "${PRPROCESSING_DIR}/tmp_bc/dwiprebc_${VIDX}.mif"
-                #     dwibiascorrect ants -bias "${PRPROCESSING_DIR}/tmp_bc/b1biasfield_${VIDX}.mif" "${PRPROCESSING_DIR}/tmp_bc/dwiprebc_${VIDX}.mif" "${PRPROCESSING_DIR}/tmp_bc/dwibc_${VIDX}.mif"
-                #     DWImif+="${PRPROCESSING_DIR}/tmp_bc/dwibc_${VIDX}.mif "
-                # done
-                # mrcat -axis 3 $DWImif ${PRPROCESSING_DIR}/dwibc.mif
-
-        elif [[ $B1CORRECTIONWAY == "using_mask" ]] ; then
-            echo "To be implemented soon"
-        fi
-
-    ############################################################
-    elif [[ ${NUMBER_ECHOTIME} -gt 1 ]] && [[ -e "${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_${DISTORTIONCORRECTION_WAY}_TE1_${DIRSORDER}.nii.gz" ]]; then
-
-
-        WORKING_DMRI_BC1="${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_${DISTORTIONCORRECTION_WAY}_TE1_${DIRSORDER}"
-        # "${DISTORTIONCO_DIR}/BM/dwidc_SliceDupBM_Dir0_Fte1_Bte2"
-        #WORKING_DMRI_BC2=${DISTORTIONCO_DIR}/BM/dwidc_TE2_TOPUPONLY_perSlice
-
-        python "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI_BC1}.nii.gz" \
-                                        --bvals "${BVALS}" \
-                                        --bvecs "${BVECS}" \
-                                        --grads "${GRAD4CLS}" \
-                                        --ntecho "${NUMBER_ECHOTIME}" \
-                                        --bvalsnew "${BVALSTE}" \
-                                        --bvecsnew "${BVECSTE}" \
-                                        --gradsnew  "${GRAD4CLSTE}"
-
-
-
-        mrconvert "${WORKING_DMRI_BC1}.nii.gz" "${WORKING_DMRI_BC1}.mif" -stride "$STRIDES" -force
-        #mrconvert "${WORKING_DMRI_BC2}.nii.gz" "${WORKING_DMRI_BC2}.mif" -stride "$STRIDES" -force
-
-        mrconvert "${WORKING_DMRI_BC1}.mif" "${WORKING_DMRI_BC1}.mif" -grad $GRAD4CLSTE -force
-        #mrconvert "${WORKING_DMRI_BC2}.mif" "${WORKING_DMRI_BC2}.mif" -grad $GRAD4CLSTE -force
-
-
-        if [[ ! -e ${PRPROCESSING_DIR}/dwiTopupVolumemask_TE1.nii.gz ]] && [[ ! -e ${PRPROCESSING_DIR}/dwiTopupVolume_sk_TE1.mif ]]; then
-
-            bash ${SRC}/segment_fetalbrain.sh --dmri "${WORKING_DMRI_BC1}.mif" \
-                                         --seg_tmp_dir ${PRPROCESSING_DIR}/seg_tmp \
-                                         --dmrisk ${PRPROCESSING_DIR}/dwibc_sk_TE1.mif \
-                                         --dmriskpervolume ${PRPROCESSING_DIR}/dwibc_sk_TE1_pervolume.mif \
-                                         --mask ${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz
-        else
-
-            cp ${PRPROCESSING_DIR}/dwiTopupVolumemask_TE1.nii.gz ${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz
-            cp ${PRPROCESSING_DIR}/dwiTopupVolume_sk_TE1.mif ${PRPROCESSING_DIR}/dwibc_sk_TE1.mif
-
-        fi
-
-        # Make sure that ANTS's Inputs occupy the same physical space!
-        mrconvert "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" - -stride "$STRIDES3D" | mrtransform - -template "${WORKING_DMRI_BC1}.mif" -interp nearest "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -force
-
-        if [[ $B1CORRECTIONWAY == "Using_B0" ]]; then
-
-            dwibiascorrect ants -mask "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -bias "${PRPROCESSING_DIR}/b1N4BiasField_TE1.mif" "${WORKING_DMRI_BC1}.mif" "${PRPROCESSING_DIR}/dwibc_TE1.mif" -force
-            #dwibiascorrect ants -bias ${OUTPATHSUB}/b1biasfieldTE2.mif "${WORKING_DMRI_BC2}.mif" "${OUTPATHSUB}/dwibc_TE2.mif"
-            if [[ ! -e ${PRPROCESSING_DIR}/dwibc_TE1.mif ]]; then
-                dwibiascorrect ants -bias "${PRPROCESSING_DIR}/b1N4BiasField_TE1.mif" "${WORKING_DMRI_BC1}.mif" "${PRPROCESSING_DIR}/dwibc_TE1.mif" -force
-            fi
-
-        elif [[ $B1CORRECTIONWAY == "Individually" ]]; then
-            echo "To be implemented/improved later"
-            # this option is not working : raise MRtrixError('DW gradient scheme contains different number of entries (' + str(len(dwi_header.keyval()['dw_scheme']))
-            # + ' to number of volumes in DWIs (' + dwi_header.size()[3] + ')'). Some efforts should be done here to improve it. Read Maria Derpez and DESIGNER papers.
-            # DWImif=""
-            # for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
-            #     mrconvert -coord 3  $VIDX  ${OUTPATHSUB}/dwirc.mif  ${OUTPATHSUB}/dwiprebc_${VIDX}.mif
-            #     dwibiascorrect ants -bias "${OUTPATHSUB}/b1biasfield_${VIDX}.mif" "${OUTPATHSUB}/dwiprebc_${VIDX}.mif" "${OUTPATHSUB}/dwibc_${VIDX}.mif"
-            #     DWImif+="dwibc_${VIDX}.mif "
-            # done
-            # mrcat -axis 3 $DWImif ${OUTPATHSUB}/dwibc.mif
-
-        elif [[ $B1CORRECTIONWAY == "using_mask" ]]; then
-            echo "To be implemented soon"
-        fi
-
+    if [[ -f "${PRPROCESSING_DIR}/dwibc_TE1.mif" && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
     else
-        echo "Error: Unexpected value for NUMBER_ECHOTIME."
-        exit
-    fi
 
+        touch ${LOCK7}
+        echo -e "\n${STEPX}.|--->  B1 Field Bias Correction   ---"
+
+        B1CORRECTIONWAY="Using_B0"
+        echo "EchoTime number is ${NUMBER_ECHOTIME}"
+
+
+        ############################################################
+        if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
+            BVALSTE="${BVALS}"
+            BVECSTE="${BVECS}"
+            GRAD4CLSTE="${GRAD4CLS}"
+
+            # Define the method for B1 correction. Options: "Using_B0", "Individually", "using_mask"
+            B1CORRECTIONWAY="Using_B0"
+
+            mrconvert "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwicrop.mif" -stride "$STRIDES" -force
+            # Make sure that ANTS's Inputs occupy the same physical space!
+            mrconvert "${PRPROCESSING_DIR}/union_maskcrop.nii.gz" - -stride "$STRIDES3D" | mrtransform - -template "${PRPROCESSING_DIR}/dwicrop.mif" -interp nearest "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -force
+
+            mrcalc "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -mult  "${PRPROCESSING_DIR}/dwibc_sk_TE1.mif" -force
+
+            if [[ $B1CORRECTIONWAY == "Using_B0" ]]; then
+                dwibiascorrect ants -mask "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -bias "${PRPROCESSING_DIR}/b1N4BiasField_TE1.mif" "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwibc_TE1.mif" -force
+                if [[ ! -e ${PRPROCESSING_DIR}/dwibc_TE1.mif ]]; then
+                    dwibiascorrect ants -bias "${PRPROCESSING_DIR}/b1N4BiasField_TE1.mif" "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwibc_TE1.mif" -force
+                fi
+            elif [[ $B1CORRECTIONWAY == "Individually" ]]; then
+                echo "To be implemented/improved later"
+                # this option is not working : raise MRtrixError('DW gradient scheme contains different number of entries (' + str(len(dwi_header.keyval()['dw_scheme']))
+                # + ' to number of volumes in DWIs (' + dwi_header.size()[3] + ')'). Soome efforts should be done here to improve it. Read Maria Derpez and DESIGNER papers.
+                    # DWImif=""
+                    # mkdir -p "${PRPROCESSING_DIR}/tmp_bc"
+                    # for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
+                    #     mrconvert -coord 3  $VIDX  "${PRPROCESSING_DIR}/dwirc.mif"  "${PRPROCESSING_DIR}/tmp_bc/dwiprebc_${VIDX}.mif"
+                    #     dwibiascorrect ants -bias "${PRPROCESSING_DIR}/tmp_bc/b1biasfield_${VIDX}.mif" "${PRPROCESSING_DIR}/tmp_bc/dwiprebc_${VIDX}.mif" "${PRPROCESSING_DIR}/tmp_bc/dwibc_${VIDX}.mif"
+                    #     DWImif+="${PRPROCESSING_DIR}/tmp_bc/dwibc_${VIDX}.mif "
+                    # done
+                    # mrcat -axis 3 $DWImif ${PRPROCESSING_DIR}/dwibc.mif
+
+            elif [[ $B1CORRECTIONWAY == "using_mask" ]] ; then
+                echo "To be implemented soon"
+            fi
+
+        ############################################################
+        elif [[ ${NUMBER_ECHOTIME} -gt 1 ]] && [[ -e "${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_${DISTORTIONCORRECTION_WAY}_TE1_${DIRSORDER}.nii.gz" ]]; then
+
+
+            WORKING_DMRI_BC1="${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_${DISTORTIONCORRECTION_WAY}_TE1_${DIRSORDER}"
+            # "${DISTORTIONCO_DIR}/BM/dwidc_SliceDupBM_Dir0_Fte1_Bte2"
+            #WORKING_DMRI_BC2=${DISTORTIONCO_DIR}/BM/dwidc_TE2_TOPUPONLY_perSlice
+
+            python "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI_BC1}.nii.gz" \
+                                            --bvals "${BVALS}" \
+                                            --bvecs "${BVECS}" \
+                                            --grads "${GRAD4CLS}" \
+                                            --ntecho "${NUMBER_ECHOTIME}" \
+                                            --bvalsnew "${BVALSTE}" \
+                                            --bvecsnew "${BVECSTE}" \
+                                            --gradsnew  "${GRAD4CLSTE}"
+
+
+
+            mrconvert "${WORKING_DMRI_BC1}.nii.gz" "${WORKING_DMRI_BC1}.mif" -stride "$STRIDES" -force
+            #mrconvert "${WORKING_DMRI_BC2}.nii.gz" "${WORKING_DMRI_BC2}.mif" -stride "$STRIDES" -force
+
+            mrconvert "${WORKING_DMRI_BC1}.mif" "${WORKING_DMRI_BC1}.mif" -grad $GRAD4CLSTE -force
+            #mrconvert "${WORKING_DMRI_BC2}.mif" "${WORKING_DMRI_BC2}.mif" -grad $GRAD4CLSTE -force
+
+
+            if [[ ! -e ${PRPROCESSING_DIR}/dwiTopupVolumemask_TE1.nii.gz ]] && [[ ! -e ${PRPROCESSING_DIR}/dwiTopupVolume_sk_TE1.mif ]]; then
+
+                bash ${SRC}/segment_fetalbrain.sh --dmri "${WORKING_DMRI_BC1}.mif" \
+                                             --seg_tmp_dir ${PRPROCESSING_DIR}/seg_tmp \
+                                             --dmrisk ${PRPROCESSING_DIR}/dwibc_sk_TE1.mif \
+                                             --dmriskpervolume ${PRPROCESSING_DIR}/dwibc_sk_TE1_pervolume.mif \
+                                             --mask ${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz
+            else
+
+                cp ${PRPROCESSING_DIR}/dwiTopupVolumemask_TE1.nii.gz ${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz
+                cp ${PRPROCESSING_DIR}/dwiTopupVolume_sk_TE1.mif ${PRPROCESSING_DIR}/dwibc_sk_TE1.mif
+
+            fi
+
+            # Make sure that ANTS's Inputs occupy the same physical space!
+            mrconvert "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" - -stride "$STRIDES3D" | mrtransform - -template "${WORKING_DMRI_BC1}.mif" -interp nearest "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -force
+
+            if [[ $B1CORRECTIONWAY == "Using_B0" ]]; then
+
+                dwibiascorrect ants -mask "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" -bias "${PRPROCESSING_DIR}/b1N4BiasField_TE1.mif" "${WORKING_DMRI_BC1}.mif" "${PRPROCESSING_DIR}/dwibc_TE1.mif" -force
+                #dwibiascorrect ants -bias ${OUTPATHSUB}/b1biasfieldTE2.mif "${WORKING_DMRI_BC2}.mif" "${OUTPATHSUB}/dwibc_TE2.mif"
+                if [[ ! -e ${PRPROCESSING_DIR}/dwibc_TE1.mif ]]; then
+                    dwibiascorrect ants -bias "${PRPROCESSING_DIR}/b1N4BiasField_TE1.mif" "${WORKING_DMRI_BC1}.mif" "${PRPROCESSING_DIR}/dwibc_TE1.mif" -force
+                fi
+
+            elif [[ $B1CORRECTIONWAY == "Individually" ]]; then
+                echo "To be implemented/improved later"
+                # this option is not working : raise MRtrixError('DW gradient scheme contains different number of entries (' + str(len(dwi_header.keyval()['dw_scheme']))
+                # + ' to number of volumes in DWIs (' + dwi_header.size()[3] + ')'). Some efforts should be done here to improve it. Read Maria Derpez and DESIGNER papers.
+                # DWImif=""
+                # for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
+                #     mrconvert -coord 3  $VIDX  ${OUTPATHSUB}/dwirc.mif  ${OUTPATHSUB}/dwiprebc_${VIDX}.mif
+                #     dwibiascorrect ants -bias "${OUTPATHSUB}/b1biasfield_${VIDX}.mif" "${OUTPATHSUB}/dwiprebc_${VIDX}.mif" "${OUTPATHSUB}/dwibc_${VIDX}.mif"
+                #     DWImif+="dwibc_${VIDX}.mif "
+                # done
+                # mrcat -axis 3 $DWImif ${OUTPATHSUB}/dwibc.mif
+
+            elif [[ $B1CORRECTIONWAY == "using_mask" ]]; then
+                echo "To be implemented soon"
+            fi
+
+        else
+            echo "Error: Unexpected value for NUMBER_ECHOTIME."
+            exit
+        fi
+
+    fi
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -1603,192 +1622,195 @@ echo "--------------------------------------------------------------------------
 # STEP 8: STEP8_3DSHORE_RECONSTRUCTION
 if [[ $NOLOCKS = 1 && -e ${LOCK8} && ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] ; then rm ${LOCK8} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] && [[ ! -e ${LOCK8} ]]; then
-
-    echo -e "\n ${STEPX}.|--->  3D SHORE RECONSTRUCTION   ---"
-    touch ${LOCK8}
-
-    ########### mrconvert dwicrop.mif -axes 0,2,1,3 dwicropOK.mif -force
-    WORKING_DMRI="${MOTIONCORREC_DIR}/working_TE1.nii.gz"
-    WORKING_DMRIMASK="${MOTIONCORREC_DIR}/working_mask_TE1.nii.gz"
-
-    WORKING_DMRI_GMM="${MOTIONCORREC_DIR}/working_TE1_GMM.nii.gz"
-    WORKING_DMRIMASK_GMM="${MOTIONCORREC_DIR}/working_mask_TE1_GMM.nii.gz"
-
-    # copy necessary data and make sure that strides are correct
-    mrconvert "${PRPROCESSING_DIR}/dwibc_TE1.mif" "${WORKING_DMRI}" -stride "$STRIDES" -force
-
-    maskfilter -npass 1 "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" dilate - | mrconvert - "${WORKING_DMRIMASK}" -stride "$STRIDES3D" -force
-
-    # bvals and bvecs for different TE
-    if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
-        BVALSTE="${BVALS}"
-        BVECSTE="${BVECS}"
-
-    elif [[ ${NUMBER_ECHOTIME} -gt 1 ]]; then
-
-        python "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI}" \
-                                        --bvals "${BVALS}" \
-                                        --bvecs "${BVECS}" \
-                                        --grads "${GRAD4CLS}" \
-                                        --ntecho "${NUMBER_ECHOTIME}" \
-                                        --bvalsnew "${BVALSTE}" \
-                                        --bvecsnew "${BVECSTE}" \
-                                        --gradsnew  "${GRAD4CLSTE}"
+    if [[ -f "${MOTIONCORREC_DIR}/spred5.nii.gz" && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
     else
-        echo "Error: Unexpected value for NUMBER_ECHOTIME."
-        exit 1
-    fi
 
+        echo -e "\n ${STEPX}.|--->  3D SHORE RECONSTRUCTION   ---"
+        touch ${LOCK8}
 
-    #
-    RAWWORKING_DMRI="$WORKING_DMRI"
+        ########### mrconvert dwicrop.mif -axes 0,2,1,3 dwicropOK.mif -force
+        WORKING_DMRI="${MOTIONCORREC_DIR}/working_TE1.nii.gz"
+        WORKING_DMRIMASK="${MOTIONCORREC_DIR}/working_mask_TE1.nii.gz"
 
-    EPOCHS=6 # Set number of reconstruction iterations here
-    ITER_REG="1 2 3 4"
-    REG_UPDATE=0
-    REG_COUNTER=0
-    BVECSTEIN=$BVECSTE
+        WORKING_DMRI_GMM="${MOTIONCORREC_DIR}/working_TE1_GMM.nii.gz"
+        WORKING_DMRIMASK_GMM="${MOTIONCORREC_DIR}/working_mask_TE1_GMM.nii.gz"
 
-    for ((ITER=0; ITER<$EPOCHS; ITER++)); do
-        ITERM=$((ITER-1))
+        # copy necessary data and make sure that strides are correct
+        mrconvert "${PRPROCESSING_DIR}/dwibc_TE1.mif" "${WORKING_DMRI}" -stride "$STRIDES" -force
 
+        maskfilter -npass 1 "${PRPROCESSING_DIR}/dwibcmask_TE1.nii.gz" dilate - | mrconvert - "${WORKING_DMRIMASK}" -stride "$STRIDES3D" -force
 
-        # AXIS SLICE is number 0 or 1.
-        echo "=================================================================================================================="
-        echo "Reorient data for GMM slice weighting : $ITER"
-        echo "=================================================================================================================="
+        # bvals and bvecs for different TE
+        if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
+            BVALSTE="${BVALS}"
+            BVECSTE="${BVECS}"
 
+        elif [[ ${NUMBER_ECHOTIME} -gt 1 ]]; then
 
-
-        if [[ $AXSLICES -eq "0" ]]; then
-
-            echo "Applying Transformation Axis as Slice's Axis = $AXSLICES"
-
-            echo "0 0  1 0
-            1 0 0 0
-            0 1  0 0
-            0 0  0 1" > "${PRPROCESSING_DIR}/trans_axis0.txt"
-
-            mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${WORKING_DMRI}" "${WORKING_DMRI_GMM}" -force
-            mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${WORKING_DMRIMASK}" "${WORKING_DMRIMASK_GMM}" -force
-
-            if [[ -e "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" ]]; then
-
-                SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}_GMM.nii.gz"
-                mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" "${SPRED_GMM}" -force
-            fi
-        elif [[ $AXSLICES -eq "1" ]]; then
-            echo "Applying Transformation Axis as Slice's Axis = $AXSLICES"
-            echo "1 0  0 0
-            0 0 -1 0
-            0 1  0 0
-            0 0  0 1" > "${PRPROCESSING_DIR}/trans_axis1.txt"
-
-            mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${WORKING_DMRI}" "${WORKING_DMRI_GMM}" -force
-            mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${WORKING_DMRIMASK}" "${WORKING_DMRIMASK_GMM}" -force
-            if [[ -e "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" ]]; then
-
-                SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}_GMM.nii.gz"
-                mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" "${SPRED_GMM}" -force
-            fi
-
-        elif [[ $AXSLICES -eq "2" ]]; then
-            WORKING_DMRI_GMM=${WORKING_DMRI}
-            WORKING_DMRIMASK_GMM=${WORKING_DMRIMASK}
-            SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz"
-
+            python "${SRC}/update_bvecs_bvals.py"  --dmri "${WORKING_DMRI}" \
+                                            --bvals "${BVALS}" \
+                                            --bvecs "${BVECS}" \
+                                            --grads "${GRAD4CLS}" \
+                                            --ntecho "${NUMBER_ECHOTIME}" \
+                                            --bvalsnew "${BVALSTE}" \
+                                            --bvecsnew "${BVECSTE}" \
+                                            --gradsnew  "${GRAD4CLSTE}"
+        else
+            echo "Error: Unexpected value for NUMBER_ECHOTIME."
+            exit 1
         fi
 
 
-        echo "=================================================================================================================="
-        echo "Start Reconstruction Iteration : $ITER"
-        echo "=================================================================================================================="
-        # # Outlier Detection
-        python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" \
-                                   --dmrigmm  "$WORKING_DMRI_GMM" \
-                                   --bval "$BVALSTE" \
-                                   --bvec "$BVECSTE" \
-                                   --outpath "${SLICEWEIGHTS_DIR}" \
-                                   --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" \
-                                   --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" \
-                                   --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" \
-                                   --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" \
-                                   --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" \
-                                   --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" \
-                                   --spredgmm "${SPRED_GMM}" \
-                                   --mask "$WORKING_DMRIMASK" \
-                                   --maskgmm "$WORKING_DMRIMASK_GMM"
+        #
+        RAWWORKING_DMRI="$WORKING_DMRI"
 
-        echo "=================================================================================================================="
-        # Select weighting method
-        if [ $ITER -eq 0 ]; then # Initialization
-
-            SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_mzscore_${ITER}.txt"
-            echo "Modfied Zscore (slice-wise) weights will be used."
-        elif [[ $ITER -eq 98 ]]; then # Final iteration - alternative option for final weighting
-        #elif [[ $ITER -eq $((EPOCHS - 1)) ]]; then # This would replace the final iteration weighting method
-
-            ITERSPECIAL=1
-            bash ${SRC}/applytransform.sh --weights4D "${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}.nii.gz"  \
-                                  --workpath "${MOTIONCORREC_DIR}/registration_gmm" \
-                                  --transformspath "${REG_WORKINGPATH}" \
-                                  --weights4Dreg "${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}_reg.nii.gz"
-
-            SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}_reg.nii.gz"
-            echo "Shore-based (voxel-wise) weights will be used."
-
-        elif [[ $ITER -eq 99 ]]; then # # not used - alternative option for final weighting
-
-            SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fvoxelweights_shore_${ITER}.nii.gz"
-                echo "Shore-based (voxel-wise) weights will be used."
-
-        else # default weighting after the initial step
-
-            SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITER}.txt"
-            echo "GMM (slice-wise) weights will be used."
-
-        fi
-        echo "=================================================================================================================="
-        # SHORE Fitting
-        python ${SRC}/shorerecon.py --dmri "$WORKING_DMRI" --bval "$BVALSTE" --bvec_in "$BVECSTEIN" --bvec_out "$BVECSTE" \
-                             --mask "$WORKING_DMRIMASK" \
-                             --weights  "${SHOREWEIGHTING}" \
-                             --fspred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" \
-                             -do_not_use_mask
-
-        # Make sure that the bvec_in is bvec_out after the reconstruction done
+        EPOCHS=6 # Set number of reconstruction iterations here
+        ITER_REG="1 2 3 4"
+        REG_UPDATE=0
+        REG_COUNTER=0
         BVECSTEIN=$BVECSTE
 
-        echo "=================================================================================================================="
-        # Registration of original data to SHORE predicted data after specific number of iterations
-        if [[ "$ITER_REG" == *"$ITER"* ]]; then
-            echo "Start Registration : $ITER"
-
-            ((REG_COUNTER++))
-            REG_WORKINGPATH="${MOTIONCORREC_DIR}/registration_iter${REG_COUNTER}"
-            # v2v registration
-            bash ${SRC}/dwiregistration.sh  --rdmri "$RAWWORKING_DMRI" \
-                                    --spred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" \
-                                    --workingpath "${REG_WORKINGPATH}" \
-                                    --rdmrireg "${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz"
-
-            # Rotate bvecs per volume
-            # Check if the rotation component should be inversed or not
-            BVECSTEROT="${MOTIONCORREC_DIR}/rotated_bvecs$REG_UPDATE"
-            python ${SRC}/rotate_bvecs_ants.py --bvecs "$BVECSTE" \
-                                        --bvecsnew "$BVECSTEROT" \
-                                        --pathofmatfile "${REG_WORKINGPATH}" \
-                                        --startprefix "Transform_v" \
-                                        --endprefix "_0GenericAffine.mat"
-
-            WORKING_DMRI="${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz"
-            BVECSTEIN=$BVECSTEROT
-            REG_UPDATE=$((REG_UPDATE+1))
-        fi
-    done
+        for ((ITER=0; ITER<$EPOCHS; ITER++)); do
+            ITERM=$((ITER-1))
 
 
-    #cp "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" "${MOTIONCORREC_DIR}/sprediction.nii.gz"
+            # AXIS SLICE is number 0 or 1.
+            echo "=================================================================================================================="
+            echo "Reorient data for GMM slice weighting : $ITER"
+            echo "=================================================================================================================="
+
+
+
+            if [[ $AXSLICES -eq "0" ]]; then
+
+                echo "Applying Transformation Axis as Slice's Axis = $AXSLICES"
+
+                echo "0 0  1 0
+                1 0 0 0
+                0 1  0 0
+                0 0  0 1" > "${PRPROCESSING_DIR}/trans_axis0.txt"
+
+                mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${WORKING_DMRI}" "${WORKING_DMRI_GMM}" -force
+                mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${WORKING_DMRIMASK}" "${WORKING_DMRIMASK_GMM}" -force
+
+                if [[ -e "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" ]]; then
+
+                    SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}_GMM.nii.gz"
+                    mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" "${SPRED_GMM}" -force
+                fi
+            elif [[ $AXSLICES -eq "1" ]]; then
+                echo "Applying Transformation Axis as Slice's Axis = $AXSLICES"
+                echo "1 0  0 0
+                0 0 -1 0
+                0 1  0 0
+                0 0  0 1" > "${PRPROCESSING_DIR}/trans_axis1.txt"
+
+                mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${WORKING_DMRI}" "${WORKING_DMRI_GMM}" -force
+                mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${WORKING_DMRIMASK}" "${WORKING_DMRIMASK_GMM}" -force
+                if [[ -e "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" ]]; then
+
+                    SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}_GMM.nii.gz"
+                    mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" "${SPRED_GMM}" -force
+                fi
+
+            elif [[ $AXSLICES -eq "2" ]]; then
+                WORKING_DMRI_GMM=${WORKING_DMRI}
+                WORKING_DMRIMASK_GMM=${WORKING_DMRIMASK}
+                SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz"
+
+            fi
+
+
+            echo "=================================================================================================================="
+            echo "Start Reconstruction Iteration : $ITER"
+            echo "=================================================================================================================="
+            # # Outlier Detection
+            python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" \
+                                       --dmrigmm  "$WORKING_DMRI_GMM" \
+                                       --bval "$BVALSTE" \
+                                       --bvec "$BVECSTE" \
+                                       --outpath "${SLICEWEIGHTS_DIR}" \
+                                       --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" \
+                                       --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" \
+                                       --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" \
+                                       --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" \
+                                       --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" \
+                                       --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" \
+                                       --spredgmm "${SPRED_GMM}" \
+                                       --mask "$WORKING_DMRIMASK" \
+                                       --maskgmm "$WORKING_DMRIMASK_GMM"
+
+            echo "=================================================================================================================="
+            # Select weighting method
+            if [ $ITER -eq 0 ]; then # Initialization
+
+                SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_mzscore_${ITER}.txt"
+                echo "Modfied Zscore (slice-wise) weights will be used."
+            elif [[ $ITER -eq 98 ]]; then # Final iteration - alternative option for final weighting
+            #elif [[ $ITER -eq $((EPOCHS - 1)) ]]; then # This would replace the final iteration weighting method
+
+                ITERSPECIAL=1
+                bash ${SRC}/applytransform.sh --weights4D "${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}.nii.gz"  \
+                                      --workpath "${MOTIONCORREC_DIR}/registration_gmm" \
+                                      --transformspath "${REG_WORKINGPATH}" \
+                                      --weights4Dreg "${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}_reg.nii.gz"
+
+                SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITERSPECIAL}_reg.nii.gz"
+                echo "Shore-based (voxel-wise) weights will be used."
+
+            elif [[ $ITER -eq 99 ]]; then # # not used - alternative option for final weighting
+
+                SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fvoxelweights_shore_${ITER}.nii.gz"
+                    echo "Shore-based (voxel-wise) weights will be used."
+
+            else # default weighting after the initial step
+
+                SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_gmmodel_${ITER}.txt"
+                echo "GMM (slice-wise) weights will be used."
+
+            fi
+            echo "=================================================================================================================="
+            # SHORE Fitting
+            python ${SRC}/shorerecon.py --dmri "$WORKING_DMRI" --bval "$BVALSTE" --bvec_in "$BVECSTEIN" --bvec_out "$BVECSTE" \
+                                 --mask "$WORKING_DMRIMASK" \
+                                 --weights  "${SHOREWEIGHTING}" \
+                                 --fspred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" \
+                                 -do_not_use_mask
+
+            # Make sure that the bvec_in is bvec_out after the reconstruction done
+            BVECSTEIN=$BVECSTE
+
+            echo "=================================================================================================================="
+            # Registration of original data to SHORE predicted data after specific number of iterations
+            if [[ "$ITER_REG" == *"$ITER"* ]]; then
+                echo "Start Registration : $ITER"
+
+                ((REG_COUNTER++))
+                REG_WORKINGPATH="${MOTIONCORREC_DIR}/registration_iter${REG_COUNTER}"
+                # v2v registration
+                bash ${SRC}/dwiregistration.sh  --rdmri "$RAWWORKING_DMRI" \
+                                        --spred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" \
+                                        --workingpath "${REG_WORKINGPATH}" \
+                                        --rdmrireg "${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz"
+
+                # Rotate bvecs per volume
+                # Check if the rotation component should be inversed or not
+                BVECSTEROT="${MOTIONCORREC_DIR}/rotated_bvecs$REG_UPDATE"
+                python ${SRC}/rotate_bvecs_ants.py --bvecs "$BVECSTE" \
+                                            --bvecsnew "$BVECSTEROT" \
+                                            --pathofmatfile "${REG_WORKINGPATH}" \
+                                            --startprefix "Transform_v" \
+                                            --endprefix "_0GenericAffine.mat"
+
+                WORKING_DMRI="${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz"
+                BVECSTEIN=$BVECSTEROT
+                REG_UPDATE=$((REG_UPDATE+1))
+            fi
+        done
+
+        #cp "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" "${MOTIONCORREC_DIR}/sprediction.nii.gz"
+
+    fi
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -1799,115 +1821,119 @@ echo "--------------------------------------------------------------------------
 if [[ $NOLOCKS = 1 && -e ${LOCK9} && ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] ; then rm ${LOCK9} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] && [[ ! -e ${LOCK9} ]]; then
 
-    echo " ${STEPX}.|---> Registration to T2W and Atlas"
-    touch ${LOCK9}
-
-    # bvals and bvecs for different TE
-    if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
-        BVALSTE="${BVALS}"
-        BVECSTE="${BVECS}"
-    fi
-
-    FILES=(${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/*.tfm)
-
-    if [[ -e ${FILES[0]} ]] && [[ -e "${BVALSTE}" ]]; then
-
-        if [[ ! -n $T2W_RECON_METHOD ]] ; then
-            # default
-            T2W_ORIGIN_SPACE=`find ${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/ -name ${SUBJECTID}_${DWISESSION}_rec-\*_t2w-t2space.nii.gz | sort | head -n1`
-            T2W_ATLAS_SPACE=`find ${T2W_DATA}/${SUBJECTID}/${DWISESSION}/anat/ -name ${SUBJECTID}_${DWISESSION}_rec-\*_t2w.nii.gz | sort | head -n1`
-            XFM=`find ${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/ -name ${SUBJECTID}_${DWISESSION}_rec-\*_t2w-t2space.tfm | sort | head -n1`
-
-        else
-            # user specified
-            T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.nii.gz"
-            T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/anat/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w.nii.gz"
-            XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.tfm"
-        fi
-
-        cp ${T2W_ORIGIN_SPACE} ${T2WXFM_FILES_DIR}/.
-        cp ${T2W_ATLAS_SPACE} ${T2WXFM_FILES_DIR}/.
-        cp ${XFM} ${T2WXFM_FILES_DIR}/.
-
-        if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ORIGIN_SPACE}` ]] ; then echo "t2w origin space not found" ; continue ; fi
-        if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ATLAS_SPACE}` ]] ; then echo "t2w atlas space not found" ; continue ; fi
-        if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${XFM}` ]] ; then echo "t2w origin-to-atlas space transform not found" ; continue ; fi
-
-        lastspred=`find ${MOTIONCORREC_DIR} -maxdepth 1 -name spred\*.nii.gz | sort | tail -n1`
-        # mrconvert "${MOTIONCORREC_DIR}/spred5.nii.gz" "${MOTIONCORREC_DIR}/spred5STRIDES.nii.gz" -stride "$STRIDES" -force
-        mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${lastspred} ${PRPROCESSING_DIR}/spredraw.mif -force
-
-        mrgrid ${PRPROCESSING_DIR}/spredraw.mif regrid -vox 1.25 ${PRPROCESSING_DIR}/spred.mif -force # upsamled
-
-        echo "Register DWI to T2"
-        if [[ $REGSTRAT == "manual" ]]; then
-            echo method: manual
-
-            # Start by SLICER OR ITKSNAP to get MANUAL_REG_MATRIX ... preprocessing/spred_0.nii.gz to T2WXFM/*_t2w-t2space.nii.gz
-            transformconvert ${REGISTRATION_DIR}/MANUAL_REG_MATRIX.txt itk_import ${REGISTRATION_DIR}/itk_mrtrixslicer.mat -force
-            transformcalc  ${REGISTRATION_DIR}/itk_mrtrixslicer.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
-
-        elif [[ $REGSTRAT == "ants" ]] ; then
-
-            echo method: ANTS
-  	        OUTANTS="${REGISTRATION_DIR}/ANTSrigid_to_t2"
-  	        ANTSXFM=${OUTANTS}Affine.txt
-  	        mrconvert "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred.nii.gz"
-
-  	        if [[ ! -f ${OUTANTS}/ANTSrigid_to_t2.nii.gz ]] ; then
-  		          echo "Running ANTS"
-  		          ANTS 3 -m PR[${T2W_ORIGIN_SPACE},${PRPROCESSING_DIR}/spred.nii.gz,1,2] -o ${OUTANTS} -r Gauss[3,0] --do-rigid
-  		          WarpImageMultiTransform 3 ${PRPROCESSING_DIR}/spred.nii.gz ${OUTANTS}.nii.gz -R ${T2W_ORIGIN_SPACE} ${OUTANTS}Warp.nii.gz ${ANTSXFM}
-  	        else
-  	            echo "ANTS output found"
-  	        fi
-
-  	    # c3d_affine_tool used to convert ANTS output to FSL (readable by mrtrix)
-  	    c3d_affine_tool -ref ${T2W_ORIGIN_SPACE} -src ${PRPROCESSING_DIR}/spred.nii.gz -itk ${ANTSXFM} -ras2fsl -o ${REGISTRATION_DIR}/c3d_ants_dwi-to-t2.mat
-        transformconvert ${REGISTRATION_DIR}/c3d_ants_dwi-to-t2.mat ${PRPROCESSING_DIR}/spred.mif ${T2W_ORIGIN_SPACE} flirt_import ${REGISTRATION_DIR}/itk_ants.mat -force
-        transformcalc  ${REGISTRATION_DIR}/itk_ants.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
-        else
-
-            echo method: FLIRT
-            mrconvert -coord 3 0 "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_0.nii.gz" -force
-            flirt -in  ${PRPROCESSING_DIR}/spred_0.nii.gz -ref  $T2W_ORIGIN_SPACE -dof 6  -cost corratio -omat ${REGISTRATION_DIR}/flirt.mat
-            transformconvert ${REGISTRATION_DIR}/flirt.mat "${PRPROCESSING_DIR}/spred.mif" $T2W_ORIGIN_SPACE flirt_import ${REGISTRATION_DIR}/flirt_mrtrix.mat -force
-            transformcalc ${REGISTRATION_DIR}/flirt_mrtrix.mat rigid ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
-
-        fi
-
-
-        # just for QC
-        mrtransform  -linear ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${REGISTRATION_DIR}/spred_reg2T2W.mif"  -inverse -force
-
-
-
-        echo "Apply atlas transform to DWI [T2 space]"
-        echo "T2-to-atlas transform: ${XFM}"
-        transformconvert ${XFM} itk_import ${REGISTRATION_DIR}/itk_mrtrix.mat -force
-        transformcalc ${REGISTRATION_DIR}/itk_mrtrix.mat rigid ${REGISTRATION_DIR}/itk_mrtrix_rigid.mat -force
-
-        # combination of the 2 matrices 
-        transformcompose  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat ${REGISTRATION_DIR}/itk_mrtrix_rigid.mat ${REGISTRATION_DIR}/combination_rigid.mat -force
-        mrtransform -template ${T2W_ATLAS_SPACE} -linear ${REGISTRATION_DIR}/combination_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_xfm.mif" -force
-
-
-
-        # Haykel, March 28th, 2024: I recommend to add a registeration step "${PRPROCESSING_DIR}/spred_xfm.mif" to ${T2W_ATLAS_SPACE}
-
-
-	echo "Segment fetal brain script"
-        bash ${SRC}/segment_fetalbrain.sh --dmri ${PRPROCESSING_DIR}/spred_xfm.mif \
-         --seg_tmp_dir ${TENFOD_TRACT_DIR}/seg_tmp \
-         --dmriskpervolume ${PRPROCESSING_DIR}/spred_xfm_sk_pervolume.mif \
-         --dmrisk ${PRPROCESSING_DIR}/spred_xfm_sk.mif \
-         --mask ${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz
-
+    if [[ -f "${PRPROCESSING_DIR}/spred_xfm_sk.mif" && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
     else
-        echo "Something is missing T2W scans (or may be BVALSTE)"
-        echo "Looked for T2W in: ${T2W_DATA}"
-    fi
 
+        echo " ${STEPX}.|---> Registration to T2W and Atlas"
+        touch ${LOCK9}
+
+        # bvals and bvecs for different TE
+        if [[ ${NUMBER_ECHOTIME} -eq 1 ]]; then
+            BVALSTE="${BVALS}"
+            BVECSTE="${BVECS}"
+        fi
+
+        FILES=(${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/*.tfm)
+
+        if [[ -e ${FILES[0]} ]] && [[ -e "${BVALSTE}" ]]; then
+
+            if [[ ! -n $T2W_RECON_METHOD ]] ; then
+                # default
+                T2W_ORIGIN_SPACE=`find ${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/ -name ${SUBJECTID}_${DWISESSION}_rec-\*_t2w-t2space.nii.gz | sort | head -n1`
+                T2W_ATLAS_SPACE=`find ${T2W_DATA}/${SUBJECTID}/${DWISESSION}/anat/ -name ${SUBJECTID}_${DWISESSION}_rec-\*_t2w.nii.gz | sort | head -n1`
+                XFM=`find ${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/ -name ${SUBJECTID}_${DWISESSION}_rec-\*_t2w-t2space.tfm | sort | head -n1`
+
+            else
+                # user specified
+                T2W_ORIGIN_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.nii.gz"
+                T2W_ATLAS_SPACE="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/anat/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w.nii.gz"
+                XFM="${T2W_DATA}/${SUBJECTID}/${DWISESSION}/xfm/${SUBJECTID}_${DWISESSION}_rec-${T2W_RECON_METHOD}_t2w-t2space.tfm"
+            fi
+
+            cp ${T2W_ORIGIN_SPACE} ${T2WXFM_FILES_DIR}/.
+            cp ${T2W_ATLAS_SPACE} ${T2WXFM_FILES_DIR}/.
+            cp ${XFM} ${T2WXFM_FILES_DIR}/.
+
+            if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ORIGIN_SPACE}` ]] ; then echo "t2w origin space not found" ; continue ; fi
+            if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ATLAS_SPACE}` ]] ; then echo "t2w atlas space not found" ; continue ; fi
+            if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${XFM}` ]] ; then echo "t2w origin-to-atlas space transform not found" ; continue ; fi
+
+            lastspred=`find ${MOTIONCORREC_DIR} -maxdepth 1 -name spred\*.nii.gz | sort | tail -n1`
+            # mrconvert "${MOTIONCORREC_DIR}/spred5.nii.gz" "${MOTIONCORREC_DIR}/spred5STRIDES.nii.gz" -stride "$STRIDES" -force
+            mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${lastspred} ${PRPROCESSING_DIR}/spredraw.mif -force
+
+            mrgrid ${PRPROCESSING_DIR}/spredraw.mif regrid -vox 1.25 ${PRPROCESSING_DIR}/spred.mif -force # upsamled
+
+            echo "Register DWI to T2"
+            if [[ $REGSTRAT == "manual" ]]; then
+                echo method: manual
+
+                # Start by SLICER OR ITKSNAP to get MANUAL_REG_MATRIX ... preprocessing/spred_0.nii.gz to T2WXFM/*_t2w-t2space.nii.gz
+                transformconvert ${REGISTRATION_DIR}/MANUAL_REG_MATRIX.txt itk_import ${REGISTRATION_DIR}/itk_mrtrixslicer.mat -force
+                transformcalc  ${REGISTRATION_DIR}/itk_mrtrixslicer.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
+
+            elif [[ $REGSTRAT == "ants" ]] ; then
+
+                echo method: ANTS
+      	        OUTANTS="${REGISTRATION_DIR}/ANTSrigid_to_t2"
+      	        ANTSXFM=${OUTANTS}Affine.txt
+      	        mrconvert "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred.nii.gz"
+
+      	        if [[ ! -f ${OUTANTS}/ANTSrigid_to_t2.nii.gz ]] ; then
+      		          echo "Running ANTS"
+      		          ANTS 3 -m PR[${T2W_ORIGIN_SPACE},${PRPROCESSING_DIR}/spred.nii.gz,1,2] -o ${OUTANTS} -r Gauss[3,0] --do-rigid
+      		          WarpImageMultiTransform 3 ${PRPROCESSING_DIR}/spred.nii.gz ${OUTANTS}.nii.gz -R ${T2W_ORIGIN_SPACE} ${OUTANTS}Warp.nii.gz ${ANTSXFM}
+      	        else
+      	            echo "ANTS output found"
+      	        fi
+
+      	    # c3d_affine_tool used to convert ANTS output to FSL (readable by mrtrix)
+      	    c3d_affine_tool -ref ${T2W_ORIGIN_SPACE} -src ${PRPROCESSING_DIR}/spred.nii.gz -itk ${ANTSXFM} -ras2fsl -o ${REGISTRATION_DIR}/c3d_ants_dwi-to-t2.mat
+            transformconvert ${REGISTRATION_DIR}/c3d_ants_dwi-to-t2.mat ${PRPROCESSING_DIR}/spred.mif ${T2W_ORIGIN_SPACE} flirt_import ${REGISTRATION_DIR}/itk_ants.mat -force
+            transformcalc  ${REGISTRATION_DIR}/itk_ants.mat rigid  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
+            else
+
+                echo method: FLIRT
+                mrconvert -coord 3 0 "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_0.nii.gz" -force
+                flirt -in  ${PRPROCESSING_DIR}/spred_0.nii.gz -ref  $T2W_ORIGIN_SPACE -dof 6  -cost corratio -omat ${REGISTRATION_DIR}/flirt.mat
+                transformconvert ${REGISTRATION_DIR}/flirt.mat "${PRPROCESSING_DIR}/spred.mif" $T2W_ORIGIN_SPACE flirt_import ${REGISTRATION_DIR}/flirt_mrtrix.mat -force
+                transformcalc ${REGISTRATION_DIR}/flirt_mrtrix.mat rigid ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat -force
+
+            fi
+
+
+            # just for QC
+            mrtransform  -linear ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${REGISTRATION_DIR}/spred_reg2T2W.mif"  -inverse -force
+
+
+
+            echo "Apply atlas transform to DWI [T2 space]"
+            echo "T2-to-atlas transform: ${XFM}"
+            transformconvert ${XFM} itk_import ${REGISTRATION_DIR}/itk_mrtrix.mat -force
+            transformcalc ${REGISTRATION_DIR}/itk_mrtrix.mat rigid ${REGISTRATION_DIR}/itk_mrtrix_rigid.mat -force
+
+            # combination of the 2 matrices 
+            transformcompose  ${REGISTRATION_DIR}/linear_mrtrix_rigid.mat ${REGISTRATION_DIR}/itk_mrtrix_rigid.mat ${REGISTRATION_DIR}/combination_rigid.mat -force
+            mrtransform -template ${T2W_ATLAS_SPACE} -linear ${REGISTRATION_DIR}/combination_rigid.mat "${PRPROCESSING_DIR}/spred.mif" "${PRPROCESSING_DIR}/spred_xfm.mif" -force
+
+
+
+            # Haykel, March 28th, 2024: I recommend to add a registeration step "${PRPROCESSING_DIR}/spred_xfm.mif" to ${T2W_ATLAS_SPACE}
+
+
+    	echo "Segment fetal brain script"
+            bash ${SRC}/segment_fetalbrain.sh --dmri ${PRPROCESSING_DIR}/spred_xfm.mif \
+             --seg_tmp_dir ${TENFOD_TRACT_DIR}/seg_tmp \
+             --dmriskpervolume ${PRPROCESSING_DIR}/spred_xfm_sk_pervolume.mif \
+             --dmrisk ${PRPROCESSING_DIR}/spred_xfm_sk.mif \
+             --mask ${PRPROCESSING_DIR}/spred_xfm_mask.nii.gz
+
+        else
+            echo "Something is missing T2W scans (or may be BVALSTE)"
+            echo "Looked for T2W in: ${T2W_DATA}"
+        fi
+
+    fi
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
@@ -1917,6 +1943,9 @@ echo "--------------------------------------------------------------------------
 # STEP 10: STEP10_TSOR_RESP_FOD_TRACTOG
 if [[ $NOLOCKS = 1 && -e ${LOCK10} && ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] ; then rm ${LOCK10} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] && [[ -e "${PRPROCESSING_DIR}/spred_xfm_sk.mif"  ]]  && [[ ! -e ${LOCK10} ]] ; then
+
+    if [[ -f "${TENFOD_TRACT_DIR}/tractography.tck" && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
+    else
 
         echo "${STEPX}.|---> Tensor FOD Tractography"
         touch ${LOCK10}
@@ -2041,7 +2070,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP11_ADVANCED_FETAL_TRACTO"]}  == "TODO" ]];
 
 fi
 
-
+    fi
 else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
