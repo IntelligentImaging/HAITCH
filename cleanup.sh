@@ -2,10 +2,45 @@
 
 show_help () {
 cat << EOF
-    USAGE: sh ${0##*/} [input protocol HAITCH directory]
+    USAGE: sh ${0##*/} [-d] [-r]  -- [input protocol HAITCH directory]
     Incorrect input supplied
+
+	-d	Remove preprocessing folder outputs:
+		dwide.mif, dwigb.mif, dwirc.mif, etc (almost 500 MB for each run)
+	-r	Single Run mode. Specify a single run directory instead of the project processing directory
 EOF
 }
+
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            show_help # help message
+            exit
+            ;;
+	-r|--run)
+	    let RUNMODE=1
+	    ;;
+        -d|--delete-pp)
+	    let delprep=1
+            ;;
+        --) # end of optionals
+            shift
+            break
+            ;;
+        -)?*
+            printf 'warning: unknown option (ignored: %s\m' "$1" >&2
+            ;;
+        *) # default case, no optionals
+            break
+    esac
+    shift
+done
+
 
 if [[ $# -ne 1 || ! -d $1 ]] ; then
     show_help
@@ -14,7 +49,16 @@ fi
 
 
 prot=$1
-for OUTPATHSUB in ${prot}/*/*/*run* ; do
+
+
+
+if [[ $RUNMODE = 1 ]] ; then
+	PATHSUBS=${prot}
+else
+	PATHSUBS=`find ${prot} -mindepth 3 -maxdepth 3 -type d -name \*_run_\*`
+fi 
+
+for OUTPATHSUB in "${PATHSUBS}" ; do
 	echo cleaning big files from $OUTPATHSUB
 
 	# Step folder locations
@@ -32,23 +76,19 @@ for OUTPATHSUB in ${prot}/*/*/*run* ; do
 	RESULTS_SATS_DIR=${OUTPATHSUB}/results
 
 
-	rm -v ${PRPROCESSING_DIR}/dwiLowBval.mif
-	rm -v ${PRPROCESSING_DIR}/dwidenoise_residuals.mif
-	rm -v ${PRPROCESSING_DIR}/dwitmp.mif
-	rm -v ${PRPROCESSING_DIR}/spred.mif
-	rm -v ${PRPROCESSING_DIR}/spred_xfm.mif
-	rm -v ${PRPROCESSING_DIR}/spred_xfm_sk_pervolume.mif
+	if [[ $delprep = 1 ]] ; then
+		rm -v ${PRPROCESSING_DIR}/*
+	fi
 
-	tmpspreds=`find ${MOTIONCORREC_DIR} -maxdepth 1 -name spred\?.nii.gz | sort | head -n -1`
-	for f in $tmpspreds ; do rm -v $f ; done
-	tmpworking=`find ${MOTIONCORREC_DIR} -maxdepth 1 -name working_updated\?.nii.gz | sort | head -n -1`
-	for f in $tmpworking ; do rm -v $f ; done
+	rm -v ${MOTIONCORREC_DIR}/spred{0,1,2,3,4}.nii.gz
+	rm -v ${MOTIONCORREC_DIR}/spred?_GMM.nii.gz
+	rm -v ${MOTIONCORREC_DIR}/working_updated?.nii.gz
 
-	rm -v ${MOTIONCORREC_DIR}/registration_iter?/*.nii.gz
-	rm -v ${SEGMENTATION_DIR}/working_TE*_v?.nii.gz ${SEGMENTATION_DIR}/working_TE*_v??.nii.gz
+	rm -v ${MOTIONCORREC_DIR}/registration_iter?/*
+	rm -v ${SEGMENTATION_DIR}/*
+	rm -v ${SEGMENTATION_DIR}/*/*
 
-	tmpweights=`find ${SLICEWEIGHTS_DIR} -maxdepth 1 -name fvoxelweights_shore_\?.nii.gz | sort | head -n -1`
-	for f in $tmpweights ; do rm -v $f ; done
+	rm -v ${SLICEWEIGHTS_DIR}/*
 
 	rm -rfv ${TENFOD_TRACT_DIR}/seg_tmp
 

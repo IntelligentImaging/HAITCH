@@ -436,8 +436,8 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
             for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
                 TE=$((VIDX % NUMBER_ECHOTIME + 1))
                 VNUM=$((VIDX / NUMBER_ECHOTIME))
-                mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_odd.mif"   "${SEGMENTATION_DIR}/working_odd_TE${TE}_v${VNUM}.nii.gz"
-                mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_even.mif" "${SEGMENTATION_DIR}/working_even_TE${TE}_v${VNUM}.nii.gz"
+                mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_odd.mif"   "${SEGMENTATION_DIR}/working_odd_TE${TE}_v${VNUM}.nii.gz" -quiet
+                mrconvert -coord 3 $VIDX "${OUTPATHSUB}/working_even.mif" "${SEGMENTATION_DIR}/working_even_TE${TE}_v${VNUM}.nii.gz" -quiet
             done
         fi
 
@@ -446,7 +446,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
         for ((VIDX=0; VIDX<${NVOLUMES}; VIDX++)); do
             TE=$((VIDX % NUMBER_ECHOTIME + 1))
             VNUM=$((VIDX / NUMBER_ECHOTIME))
-            mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwirc.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}.nii.gz" -force
+            mrconvert -coord 3 $VIDX "${PRPROCESSING_DIR}/dwirc.mif" "${SEGMENTATION_DIR}/working_TE${TE}_v${VNUM}.nii.gz" -force -quiet
 
         done
 
@@ -466,7 +466,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
         mkdir -vp ${OUTPATHSUB}/segmentation/{$segin,$segout}
         chmod 777 ${OUTPATHSUB}/segmentation/{$segin,$segout}
         mpath=`readlink -f ${OUTPATHSUB}` # mount path for container
-        find ${OUTPATHSUB}/segmentation -maxdepth 1 -regex '.*working_TE.*v[0-9]+.nii.gz' -a ! -name \*mask\* -exec cp {} -v ${OUTPATHSUB}/segmentation/${segin}/ \;
+        find ${OUTPATHSUB}/segmentation -maxdepth 1 -regex '.*working_TE.*v[0-9]+.nii.gz' -a ! -name \*mask\* -exec cp {} ${OUTPATHSUB}/segmentation/${segin}/ \;
 
         # Both scripts segment all 3D volumes in the input path
         if [[ ${SEGMENTATION_METHOD}  == "DAVOOD" ]]; then
@@ -1622,7 +1622,7 @@ echo "--------------------------------------------------------------------------
 # STEP 8: STEP8_3DSHORE_RECONSTRUCTION
 if [[ $NOLOCKS = 1 && -e ${LOCK8} && ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] ; then rm ${LOCK8} ; fi
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] && [[ ! -e ${LOCK8} ]]; then
-    if [[ -f "${MOTIONCORREC_DIR}/spred5.nii.gz" && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
+    if [[ -f "${MOTIONCORREC_DIR}/spred_final.nii.gz" && $NOOVER = 1 ]] ; then echo "Step $STEPX output found, skipping." 
     else
 
         echo -e "\n ${STEPX}.|--->  3D SHORE RECONSTRUCTION   ---"
@@ -1771,11 +1771,18 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             fi
             echo "=================================================================================================================="
             # SHORE Fitting
-            python ${SRC}/shorerecon.py --dmri "$WORKING_DMRI" --bval "$BVALSTE" --bvec_in "$BVECSTEIN" --bvec_out "$BVECSTE" \
+            if [[ ! -f "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" ]] ; then
+
+                echo "# # # Shore Recon # # #"
+                python ${SRC}/shorerecon.py --dmri "$WORKING_DMRI" --bval "$BVALSTE" --bvec_in "$BVECSTEIN" --bvec_out "$BVECSTE" \
                                  --mask "$WORKING_DMRIMASK" \
                                  --weights  "${SHOREWEIGHTING}" \
                                  --fspred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" \
                                  -do_not_use_mask
+
+            else
+                echo "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz already complete"
+            fi
 
             # Make sure that the bvec_in is bvec_out after the reconstruction done
             BVECSTEIN=$BVECSTE
@@ -1787,20 +1794,25 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
 
                 ((REG_COUNTER++))
                 REG_WORKINGPATH="${MOTIONCORREC_DIR}/registration_iter${REG_COUNTER}"
-                # v2v registration
-                bash ${SRC}/dwiregistration.sh  --rdmri "$RAWWORKING_DMRI" \
-                                        --spred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" \
-                                        --workingpath "${REG_WORKINGPATH}" \
-                                        --rdmrireg "${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz"
-
-                # Rotate bvecs per volume
-                # Check if the rotation component should be inversed or not
                 BVECSTEROT="${MOTIONCORREC_DIR}/rotated_bvecs$REG_UPDATE"
-                python ${SRC}/rotate_bvecs_ants.py --bvecs "$BVECSTE" \
-                                            --bvecsnew "$BVECSTEROT" \
-                                            --pathofmatfile "${REG_WORKINGPATH}" \
-                                            --startprefix "Transform_v" \
-                                            --endprefix "_0GenericAffine.mat"
+
+                if [[ ! -f "${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz" || ! -f "$BVECSTEROT" ]] ; then
+                    # v2v registration
+                    bash ${SRC}/dwiregistration.sh  --rdmri "$RAWWORKING_DMRI" \
+                                            --spred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" \
+                                            --workingpath "${REG_WORKINGPATH}" \
+                                            --rdmrireg "${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz"
+
+                    # Rotate bvecs per volume
+                    # Check if the rotation component should be inversed or not
+                    python ${SRC}/rotate_bvecs_ants.py --bvecs "$BVECSTE" \
+                                                --bvecsnew "$BVECSTEROT" \
+                                                --pathofmatfile "${REG_WORKINGPATH}" \
+                                                --startprefix "Transform_v" \
+                                                --endprefix "_0GenericAffine.mat"
+                else
+                    echo "${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz and ${BVECSTEROT} already done"
+                fi
 
                 WORKING_DMRI="${MOTIONCORREC_DIR}/working_updated${REG_UPDATE}.nii.gz"
                 BVECSTEIN=$BVECSTEROT
@@ -1808,7 +1820,13 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             fi
         done
 
-        #cp "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" "${MOTIONCORREC_DIR}/sprediction.nii.gz"
+        if [[ -f "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" ]] ; then
+            cp "${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz" -v "${MOTIONCORREC_DIR}/spred_final.nii.gz" # rename final signal prediction
+            echo "Removing temp iteration files"
+            find ${MOTIONCORREC_DIR} -maxdepth 2 -type f -name \*.nii.gz -a ! -name spred_final.nii.gz -exec rm -f {} \; # remove iterations (~1 GB total)
+        else
+            echo "ERROR: Did not find ${MOTIONCORREC_DIR}/spred$((EPOCHS - 1)).nii.gz. Reconstruction may have failed to complete."
+        fi
 
     fi
 else
@@ -1858,9 +1876,9 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP9_REGISTRATION_T2W_ATLAS"]}  == "TODO" ]] 
             if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${T2W_ATLAS_SPACE}` ]] ; then echo "t2w atlas space not found" ; continue ; fi
             if [[ ! -f ${T2WXFM_FILES_DIR}/`basename ${XFM}` ]] ; then echo "t2w origin-to-atlas space transform not found" ; continue ; fi
 
-            lastspred=`find ${MOTIONCORREC_DIR} -maxdepth 1 -name spred\*.nii.gz | sort | tail -n1`
+            # lastspred=`find ${MOTIONCORREC_DIR} -maxdepth 1 -name spred\*.nii.gz | sort | tail -n1`
             # mrconvert "${MOTIONCORREC_DIR}/spred5.nii.gz" "${MOTIONCORREC_DIR}/spred5STRIDES.nii.gz" -stride "$STRIDES" -force
-            mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${lastspred} ${PRPROCESSING_DIR}/spredraw.mif -force
+            mrconvert -fslgrad ${MOTIONCORREC_DIR}/rotated_bvecs3 $BVALSTE ${MOTIONCORREC_DIR}/spred_final.nii.gz ${PRPROCESSING_DIR}/spredraw.mif -force
 
             mrgrid ${PRPROCESSING_DIR}/spredraw.mif regrid -vox 1.25 ${PRPROCESSING_DIR}/spred.mif -force # upsamled
 
