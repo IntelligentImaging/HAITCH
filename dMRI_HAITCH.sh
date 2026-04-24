@@ -758,105 +758,47 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
 
         if [[ $DISTORTIONCORRECTION_WAY == "CLASSIC" ]]; then
 
-            echo "Start TOPUP distortion correction per slice, volume-Slice: $VNUM-$SIDX"
-
-            # EVEN ODD ?
-            dwiextract -bzero "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwicrop_allb0.mif" -force
-            NALLB0S=$(mrinfo -size "${PRPROCESSING_DIR}/dwicrop_allb0.mif" -quiet | awk '{print $4}')
-            LAST_B0_INDEX=$((NALLB0S - NUMBER_ECHOTIME + 1))
-            # LAST_B0_INDEX=$((NALLB0S - 1))
-            mrconvert -coord 3 0,${LAST_B0_INDEX} "${PRPROCESSING_DIR}/dwicrop_allb0.mif" "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTE_1st_b0s.nii.gz"  -force
-
-
-            even_sequence=""
-            for ((i=0; i<NVOLUMES; i+=2)); do
-                if [[ -z $even_sequence ]]; then
-                    even_sequence="$i"
-                else
-                    even_sequence="$even_sequence,$i"
-                fi
-            done
-            echo $even_sequence
-
-            # Sequence for odd numbers (1:3:5:...)
-            odd_sequence=""
-            for ((i=1; i<NVOLUMES; i+=2)); do
-                if [[ -z $odd_sequence ]]; then
-                    odd_sequence="$i"
-                else
-                    odd_sequence="$odd_sequence,$i"
-                fi
-            done
-            echo $odd_sequence
-
-
-            mrconvert -coord 3 "$even_sequence" "${PRPROCESSING_DIR}/dwicrop.mif"  - | mrconvert - -stride -1,2,3,4 "${PRPROCESSING_DIR}/dwicrop_FSLTE1.nii.gz" -force
-            mrconvert -coord 3 "$odd_sequence" "${PRPROCESSING_DIR}/dwicrop.mif" - | mrconvert - -stride -1,2,3,4 "${PRPROCESSING_DIR}/dwicrop_FSLTE2.nii.gz" -force
-
-
-            topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTE_1st_b0s.nii.gz" \
-                  --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
-                  --config=b02b0.cnf \
-                  --scale=1 \
-                  --out="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
-                  --fout="${DISTORTIONCO_TMP}/fout_TEs_topup_results_v${VNUM}" \
-                  --iout="${DISTORTIONCO_TMP}/iout_TEs_topup_results_v${VNUM}"
-
-            applytopup --imain="${PRPROCESSING_DIR}/dwicrop_FSLTE1.nii.gz" --inindex=1 \
-                --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
-                --topup="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
-                --out="${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_CLASSIC_TE1_$DIRSORDER.nii.gz" \
-                --method=jac
-
-            applytopup --imain="${PRPROCESSING_DIR}/dwicrop_FSLTE2.nii.gz" --inindex=2 \
-                --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
-                --topup="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
-                --out="${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_CLASSIC_TE2_$DIRSORDER.nii.gz" \
-                --method=jac
-
-        elif [[ $DISTORTIONCORRECTION_WAY == "VOLUME" ]]; then
-
-            DWIList=""
-            NVOLUMES_PER_TE=$((NVOLUMES / NUMBER_ECHOTIME))
-            for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
+            if [[ -f ${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_CLASSIC_TE1_$DIRSORDER.nii.gz && -f ${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_CLASSIC_TE1_$DIRSORDER.nii.gz && $NOOVER = 1 ]] ; then
+                echo "CLASSIC distortion correction output found, skipping"
+            else
 
                 echo "Start TOPUP distortion correction per slice, volume-Slice: $VNUM-$SIDX"
-                # topup parameters to update :--fwhm --miter --scale=1
-                # applytopup parameters to update : --method
-                mrcat -axis 3 "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}.nii.gz" "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}.nii.gz" \
-                    "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}.nii.gz" -force -quiet
 
-                topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}.nii.gz" \
-                      --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
-                      --config=b02b0.cnf \
-                      --out="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
-                      --fout="${DISTORTIONCO_TMP}/fout_TEs_topup_results_v${VNUM}" \
-                      --iout="${DISTORTIONCO_TMP}/iout_TEs_topup_results_v${VNUM}"
+                # EVEN ODD ?
+                dwiextract -bzero "${PRPROCESSING_DIR}/dwicrop.mif" "${PRPROCESSING_DIR}/dwicrop_allb0.mif" -force
+                NALLB0S=$(mrinfo -size "${PRPROCESSING_DIR}/dwicrop_allb0.mif" -quiet | awk '{print $4}')
+                LAST_B0_INDEX=$((NALLB0S - NUMBER_ECHOTIME + 1))
+                # LAST_B0_INDEX=$((NALLB0S - 1))
+                mrconvert -coord 3 0,${LAST_B0_INDEX} "${PRPROCESSING_DIR}/dwicrop_allb0.mif" "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTE_1st_b0s.nii.gz"  -force
 
-                applytopup --imain="${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}.nii.gz","${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}.nii.gz" --inindex=1,2 \
-                    --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
-                    --topup="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
-                    --out="${DISTORTIONCO_TMP}/dwidc_v${VNUM}.nii.gz"
 
-                DWIList+="${DISTORTIONCO_TMP}/dwidc_v${VNUM}.nii.gz "
-            done
+                even_sequence=""
+                for ((i=0; i<NVOLUMES; i+=2)); do
+                    if [[ -z $even_sequence ]]; then
+                        even_sequence="$i"
+                    else
+                        even_sequence="$even_sequence,$i"
+                    fi
+                done
+                echo $even_sequence
 
-            mrcat -axis 3 $DWIList "${DISTORTIONCO_DIR}/TOPUP/dwidc.nii.gz"
+                # Sequence for odd numbers (1:3:5:...)
+                odd_sequence=""
+                for ((i=1; i<NVOLUMES; i+=2)); do
+                    if [[ -z $odd_sequence ]]; then
+                        odd_sequence="$i"
+                    else
+                        odd_sequence="$odd_sequence,$i"
+                    fi
+                done
+                echo $odd_sequence
 
-        elif [[ $DISTORTIONCORRECTION_WAY == "VOLUMETOPUPONLY" ]]; then
 
-            DWIList1=""
-            DWIList2=""
-            NVOLUMES_PER_TE=$((NVOLUMES / NUMBER_ECHOTIME))
-            for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
+                mrconvert -coord 3 "$even_sequence" "${PRPROCESSING_DIR}/dwicrop.mif"  - | mrconvert - -stride -1,2,3,4 "${PRPROCESSING_DIR}/dwicrop_FSLTE1.nii.gz" -force
+                mrconvert -coord 3 "$odd_sequence" "${PRPROCESSING_DIR}/dwicrop.mif" - | mrconvert - -stride -1,2,3,4 "${PRPROCESSING_DIR}/dwicrop_FSLTE2.nii.gz" -force
 
-                echo "Start VOLUME TOPUP ONLY distortion correction per volume: $VNUM"
-                # topup parameters to update :--fwhm --miter --scale=1
-                # applytopup parameters to update : --method
-                mrcat -axis 3 "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}.nii.gz" "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}.nii.gz" \
-                    "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}.nii.gz" -force -quiet
 
-                topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}.nii.gz" \
+                topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTE_1st_b0s.nii.gz" \
                       --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
                       --config=b02b0.cnf \
                       --scale=1 \
@@ -864,68 +806,148 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
                       --fout="${DISTORTIONCO_TMP}/fout_TEs_topup_results_v${VNUM}" \
                       --iout="${DISTORTIONCO_TMP}/iout_TEs_topup_results_v${VNUM}"
 
-                mrconvert -coord 3 0 "${DISTORTIONCO_TMP}/iout_TEs_topup_results_v${VNUM}.nii.gz" - -quiet | mrconvert - "${DISTORTIONCO_TMP}/dwidc_TE1_topup_v${VNUM}.nii.gz" -axes 0,1,2 -force -quiet
-                mrconvert -coord 3 1 "${DISTORTIONCO_TMP}/iout_TEs_topup_results_v${VNUM}.nii.gz" - -quiet | mrconvert - "${DISTORTIONCO_TMP}/dwidc_TE2_topup_v${VNUM}.nii.gz" -axes 0,1,2 -force -quiet
+                applytopup --imain="${PRPROCESSING_DIR}/dwicrop_FSLTE1.nii.gz" --inindex=1 \
+                    --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
+                    --topup="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
+                    --out="${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_CLASSIC_TE1_$DIRSORDER.nii.gz" \
+                    --method=jac
 
-                DWIList1+="${DISTORTIONCO_TMP}/dwidc_TE1_topup_v${VNUM}.nii.gz "
-                DWIList2+="${DISTORTIONCO_TMP}/dwidc_TE2_topup_v${VNUM}.nii.gz "
-            done
+                applytopup --imain="${PRPROCESSING_DIR}/dwicrop_FSLTE2.nii.gz" --inindex=2 \
+                    --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
+                    --topup="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
+                    --out="${DISTORTIONCO_DIR}/TOPUP/dwidc_TOPUP_CLASSIC_TE2_$DIRSORDER.nii.gz" \
+                    --method=jac
 
-            mrcat -axis 3 $DWIList1 "${DISTORTIONCO_DIR}/TOPUP/dwidcTE1_${DISTORTIONCORRECTION_WAY}_${DIRSORDER}.nii.gz"
-            mrcat -axis 3 $DWIList2 "${DISTORTIONCO_DIR}/TOPUP/dwidcTE2_${DISTORTIONCORRECTION_WAY}_${DIRSORDER}.nii.gz"
+            fi # end of check-for-output if statement
 
-        elif [[ $DISTORTIONCORRECTION_WAY == "SLICE" ]]; then
+        elif [[ $DISTORTIONCORRECTION_WAY == "VOLUME" ]]; then
 
-            DWI_VOLUME_List=""
-            NVOLUMES_PER_TE=$((NVOLUMES / NUMBER_ECHOTIME))
-            for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
-                DWI_SLICE_List=""
-                for ((SIDX=0; SIDX<${NSLICESCROP}; SIDX++)); do
-                    # This way of distortion correction is not working
-                    echo -e "\n |--------------->"
-                    echo "--------Start TOPUP distortion correction per slice, volume-Slice: ${VNUM}-${SIDX}"
+            if [[ -f ${DISTORTIONCO_DIR}/TOPUP/dwidc.nii.gz && $NOOVER = 1 ]] ; then
+                echo "VOLUME TOPUP output found, skipping."
+            else
+
+                DWIList=""
+                NVOLUMES_PER_TE=$((NVOLUMES / NUMBER_ECHOTIME))
+                for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
+
+                    echo "Start TOPUP distortion correction per slice, volume-Slice: $VNUM-$SIDX"
                     # topup parameters to update :--fwhm --miter --scale=1
                     # applytopup parameters to update : --method
+                    mrcat -axis 3 "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}.nii.gz" "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}.nii.gz" \
+                        "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}.nii.gz" -force -quiet
 
-                    mrcat -axis $AXSLICES "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}_dup.nii.gz" -force -quiet
-
-                    mrcat -axis $AXSLICES "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}_dup.nii.gz" -force -quiet
-
-
-                    mrcat -axis 3 "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}_dup.nii.gz" "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}_dup.nii.gz" \
-                        "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
-
-                    topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}_s${SIDX}.nii.gz" \
+                    topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}.nii.gz" \
                           --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
-                          --config=b02b0_1.cnf \
-                          --scale=1 \
-                          --out="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}_s${SIDX}" \
-                          --nthr=24
+                          --config=b02b0.cnf \
+                          --out="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
+                          --fout="${DISTORTIONCO_TMP}/fout_TEs_topup_results_v${VNUM}" \
+                          --iout="${DISTORTIONCO_TMP}/iout_TEs_topup_results_v${VNUM}"
 
-                    applytopup --imain="${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz","${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" --inindex=1,2 \
+                    applytopup --imain="${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}.nii.gz","${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}.nii.gz" --inindex=1,2 \
                         --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
-                        --topup="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}_s${SIDX}" \
-                        --out="${DISTORTIONCO_TMP}/dwidc_v${VNUM}_s${SIDX}.nii.gz"
+                        --topup="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
+                        --out="${DISTORTIONCO_TMP}/dwidc_v${VNUM}.nii.gz"
 
-                    mrconvert -coord 2 3 "${DISTORTIONCO_TMP}/dwidc_v${VNUM}_s${SIDX}.nii.gz" "${DISTORTIONCO_TMP}/dwidcS_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
-                    DWI_SLICE_List+="${DISTORTIONCO_TMP}/dwidcS_v${VNUM}_s${SIDX}.nii.gz "
-
-                    echo -e "\n ======================================================================================="
+                    DWIList+="${DISTORTIONCO_TMP}/dwidc_v${VNUM}.nii.gz "
                 done
-                mrcat -axis 2 $DWI_SLICE_List "${DISTORTIONCO_TMP}/dwidcS_v${VNUM}_perSlice.nii.gz" -force -quiet
-                DWI_VOLUME_List+="${DISTORTIONCO_TMP}/dwidcS_v${VNUM}_perSlice.nii.gz "
-            done
-            mrcat -axis 3 $DWI_VOLUME_List "${DISTORTIONCO_TMP}/dwidcTOPUPs_perSlice.nii.gz" -quiet
+
+                mrcat -axis 3 $DWIList "${DISTORTIONCO_DIR}/TOPUP/dwidc.nii.gz"
+
+            fi # end of check-for-output
+
+        elif [[ $DISTORTIONCORRECTION_WAY == "VOLUMETOPUPONLY" ]]; then
+            if [[ -f ${DISTORTIONCO_DIR}/TOPUP/dwidcTE1_${DISTORTIONCORRECTION_WAY}_${DIRSORDER}.nii.gz && -f ${DISTORTIONCO_DIR}/TOPUP/dwidcTE2_${DISTORTIONCORRECTION_WAY}_${DIRSORDER}.nii.gz && $NOOVER = 1 ]] ; then
+                echo "VOLUME TOPUP ONLY output found, skipping."
+            else
+
+                DWIList1=""
+                DWIList2=""
+                NVOLUMES_PER_TE=$((NVOLUMES / NUMBER_ECHOTIME))
+                for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
+
+                    echo "Start VOLUME TOPUP ONLY distortion correction per volume: $VNUM"
+                    # topup parameters to update :--fwhm --miter --scale=1
+                    # applytopup parameters to update : --method
+                    mrcat -axis 3 "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}.nii.gz" "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}.nii.gz" \
+                        "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}.nii.gz" -force -quiet
+
+                    topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}.nii.gz" \
+                          --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
+                          --config=b02b0.cnf \
+                          --scale=1 \
+                          --out="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}" \
+                          --fout="${DISTORTIONCO_TMP}/fout_TEs_topup_results_v${VNUM}" \
+                          --iout="${DISTORTIONCO_TMP}/iout_TEs_topup_results_v${VNUM}"
+
+                    mrconvert -coord 3 0 "${DISTORTIONCO_TMP}/iout_TEs_topup_results_v${VNUM}.nii.gz" - -quiet | mrconvert - "${DISTORTIONCO_TMP}/dwidc_TE1_topup_v${VNUM}.nii.gz" -axes 0,1,2 -force -quiet
+                    mrconvert -coord 3 1 "${DISTORTIONCO_TMP}/iout_TEs_topup_results_v${VNUM}.nii.gz" - -quiet | mrconvert - "${DISTORTIONCO_TMP}/dwidc_TE2_topup_v${VNUM}.nii.gz" -axes 0,1,2 -force -quiet
+
+                    DWIList1+="${DISTORTIONCO_TMP}/dwidc_TE1_topup_v${VNUM}.nii.gz "
+                    DWIList2+="${DISTORTIONCO_TMP}/dwidc_TE2_topup_v${VNUM}.nii.gz "
+                done
+
+                mrcat -axis 3 $DWIList1 "${DISTORTIONCO_DIR}/TOPUP/dwidcTE1_${DISTORTIONCORRECTION_WAY}_${DIRSORDER}.nii.gz"
+                mrcat -axis 3 $DWIList2 "${DISTORTIONCO_DIR}/TOPUP/dwidcTE2_${DISTORTIONCORRECTION_WAY}_${DIRSORDER}.nii.gz"
+
+            fi
+
+        elif [[ $DISTORTIONCORRECTION_WAY == "SLICE" ]]; then
+            if [[ -f "${DISTORTIONCO_TMP}/dwidcTOPUPs_perSlice.nii.gz" && $NOOVER = 1 ]] ; then
+                echo "SLICE TOPUP output found, skipping."
+            else
+
+                DWI_VOLUME_List=""
+                NVOLUMES_PER_TE=$((NVOLUMES / NUMBER_ECHOTIME))
+                for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
+                    DWI_SLICE_List=""
+                    for ((SIDX=0; SIDX<${NSLICESCROP}; SIDX++)); do
+                        # This way of distortion correction is not working
+                        echo -e "\n |--------------->"
+                        echo "--------Start TOPUP distortion correction per slice, volume-Slice: ${VNUM}-${SIDX}"
+                        # topup parameters to update :--fwhm --miter --scale=1
+                        # applytopup parameters to update : --method
+
+                        mrcat -axis $AXSLICES "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}_dup.nii.gz" -force -quiet
+
+                        mrcat -axis $AXSLICES "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}_dup.nii.gz" -force -quiet
+
+
+                        mrcat -axis 3 "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}_dup.nii.gz" "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}_dup.nii.gz" \
+                            "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
+
+                        topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}_s${SIDX}.nii.gz" \
+                              --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
+                              --config=b02b0_1.cnf \
+                              --scale=1 \
+                              --out="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}_s${SIDX}" \
+                              --nthr=24
+
+                        applytopup --imain="${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz","${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" --inindex=1,2 \
+                            --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
+                            --topup="${DISTORTIONCO_TMP}/TEs_topup_results_v${VNUM}_s${SIDX}" \
+                            --out="${DISTORTIONCO_TMP}/dwidc_v${VNUM}_s${SIDX}.nii.gz"
+
+                        mrconvert -coord 2 3 "${DISTORTIONCO_TMP}/dwidc_v${VNUM}_s${SIDX}.nii.gz" "${DISTORTIONCO_TMP}/dwidcS_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
+                        DWI_SLICE_List+="${DISTORTIONCO_TMP}/dwidcS_v${VNUM}_s${SIDX}.nii.gz "
+
+                        echo -e "\n ======================================================================================="
+                    done
+                    mrcat -axis 2 $DWI_SLICE_List "${DISTORTIONCO_TMP}/dwidcS_v${VNUM}_perSlice.nii.gz" -force -quiet
+                    DWI_VOLUME_List+="${DISTORTIONCO_TMP}/dwidcS_v${VNUM}_perSlice.nii.gz "
+                done
+                mrcat -axis 3 $DWI_VOLUME_List "${DISTORTIONCO_TMP}/dwidcTOPUPs_perSlice.nii.gz" -quiet
+
+            fi
 
         elif [[ $DISTORTIONCORRECTION_WAY == "SLICE_NEW" ]]; then
 
@@ -1011,79 +1033,84 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP6_SLICECORRECTDISTORTION"]} == "TODO" ]] &
             mrconvert "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE2_SliceDupTopup_${DIRSORDER}_APPLYTOPUP.nii.gz" - -stride "$STRIDES" | mrcalc - 0.0 -max "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE2_SliceDupTopup_${DIRSORDER}_APPLYTOPUP.nii.gz"  -force
 
         elif [[ $DISTORTIONCORRECTION_WAY == "SLICETOPUPONLY" ]]; then
+            if [[ -f "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}.nii.gz" && -f "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}.nii.gz" && $NOOVER = 1 ]] ; then
+                echo "SLICE TOPUP ONLY output found, skipping."
+            else
 
-            DWI_VOLUME_List1=""
-            DWI_VOLUME_List2=""
-            NVOLUMES_PER_TE=$((NVOLUMES / NUMBER_ECHOTIME))
-            for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
-                DWI_SLICE_List1=""
-                DWI_SLICE_List2=""
-                for ((SIDX=0; SIDX<${NSLICESCROP}; SIDX++)); do
-                    echo -e "\n |--------Start TOPUP distortion correction per slice, volume($VNUM)-Slice($SIDX)"
-                    ## topup parameters to update :--fwhm --miter --scale=1, ## applytopup parameters to update : --method
+                DWI_VOLUME_List1=""
+                DWI_VOLUME_List2=""
+                NVOLUMES_PER_TE=$((NVOLUMES / NUMBER_ECHOTIME))
+                for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
+                    DWI_SLICE_List1=""
+                    DWI_SLICE_List2=""
+                    for ((SIDX=0; SIDX<${NSLICESCROP}; SIDX++)); do
+                        echo -e "\n |--------Start TOPUP distortion correction per slice, volume($VNUM)-Slice($SIDX)"
+                        ## topup parameters to update :--fwhm --miter --scale=1, ## applytopup parameters to update : --method
 
-                    mrcat -axis $AXSLICES "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}_dup.nii.gz" -force -quiet
+                        mrcat -axis $AXSLICES "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}_dup.nii.gz" -force -quiet
 
-                    mrcat -axis $AXSLICES "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
-                                  "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}_dup.nii.gz" -force -quiet
-
-
-                    mrcat -axis 3 "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}_dup.nii.gz" "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}_dup.nii.gz" \
-                        "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
+                        mrcat -axis $AXSLICES "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}.nii.gz" \
+                                      "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}_dup.nii.gz" -force -quiet
 
 
-                    topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}_s${SIDX}.nii.gz" \
-                          --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
-                          --config=b02b0.cnf \
-                          --out="${DISTORTIONCO_TMP}/TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}" \
-                          --fout="${DISTORTIONCO_TMP}/fout_TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}" \
-                          --iout="${DISTORTIONCO_TMP}/iout_TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}" \
-                          --estmov=0 \
-                          --scale=1
-                          # --nthr=12
+                        mrcat -axis 3 "${SEGMENTATION_DIR}/${DCPREFIX}_TE1_v${VNUM}_s${SIDX}_dup.nii.gz" "${SEGMENTATION_DIR}/${DCPREFIX}_TE2_v${VNUM}_s${SIDX}_dup.nii.gz" \
+                            "${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
 
-                    mrconvert -coord 3 0 "${DISTORTIONCO_TMP}/iout_TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}.nii.gz" - -quiet | mrconvert - "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_s${SIDX}_dup.nii.gz" -axes 0,1,2 -force -quiet
-                    mrconvert -coord 3 1 "${DISTORTIONCO_TMP}/iout_TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}.nii.gz" - -quiet | mrconvert - "${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}_dup.nii.gz" -axes 0,1,2 -force -quiet
 
-                    mrconvert -coord $AXSLICES 3 "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_s${SIDX}_dup.nii.gz" "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
-                    mrconvert -coord $AXSLICES 3 "${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}_dup.nii.gz" "${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
+                        topup --imain="${DISTORTIONCO_TMP}/${DCPREFIX}_bothTEs_v${VNUM}_s${SIDX}.nii.gz" \
+                              --datain="${DISTORTIONCO_TMP}/TEs_acq_param.txt" \
+                              --config=b02b0.cnf \
+                              --out="${DISTORTIONCO_TMP}/TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}" \
+                              --fout="${DISTORTIONCO_TMP}/fout_TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}" \
+                              --iout="${DISTORTIONCO_TMP}/iout_TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}" \
+                              --estmov=0 \
+                              --scale=1
+                              # --nthr=12
 
-                    DWI_SLICE_List1+="${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_s${SIDX}.nii.gz "
-                    DWI_SLICE_List2+="${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}.nii.gz "
+                        mrconvert -coord 3 0 "${DISTORTIONCO_TMP}/iout_TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}.nii.gz" - -quiet | mrconvert - "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_s${SIDX}_dup.nii.gz" -axes 0,1,2 -force -quiet
+                        mrconvert -coord 3 1 "${DISTORTIONCO_TMP}/iout_TEs_SliceDupTopup_results_v${VNUM}_s${SIDX}.nii.gz" - -quiet | mrconvert - "${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}_dup.nii.gz" -axes 0,1,2 -force -quiet
 
-                    echo -e "\n ======================================================================================="
+                        mrconvert -coord $AXSLICES 3 "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_s${SIDX}_dup.nii.gz" "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
+                        mrconvert -coord $AXSLICES 3 "${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}_dup.nii.gz" "${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}.nii.gz" -force -quiet
+
+                        DWI_SLICE_List1+="${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}_s${SIDX}.nii.gz "
+                        DWI_SLICE_List2+="${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}_s${SIDX}.nii.gz "
+
+                        echo -e "\n ======================================================================================="
+                    done
+
+                    mrcat -axis $AXSLICES $DWI_SLICE_List1 "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}.nii.gz" -force -quiet
+                    mrcat -axis $AXSLICES $DWI_SLICE_List2 "${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}.nii.gz" -force -quiet
+
+                    DWI_VOLUME_List1+="${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}.nii.gz "
+                    DWI_VOLUME_List2+="${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}.nii.gz "
                 done
 
-                mrcat -axis $AXSLICES $DWI_SLICE_List1 "${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}.nii.gz" -force -quiet
-                mrcat -axis $AXSLICES $DWI_SLICE_List2 "${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}.nii.gz" -force -quiet
+                mrcat -axis 3 $DWI_VOLUME_List1 "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}.nii.gz" -force -quiet
+                mrcat -axis 3 $DWI_VOLUME_List2 "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE2_SliceDupTopup_${DIRSORDER}.nii.gz" -force -quiet
 
-                DWI_VOLUME_List1+="${DISTORTIONCO_TMP}/iout_TE1_SliceDupTopup_v${VNUM}.nii.gz "
-                DWI_VOLUME_List2+="${DISTORTIONCO_TMP}/iout_TE2_SliceDupTopup_v${VNUM}.nii.gz "
-            done
+                # topup (and utilisation of its field estimate in eddy) can indeed produce negative output values despite non-negative input values.
+                # This occurs if the estimated susceptibility field is non-diffeomorphic (whether or not the actual distortions are diffeomorphic),
+                # which leads to negative values of the Jacobian. The other corrections performed within eddy are pretty much guaranteed to not
+                # produce this effect as the spatial frequencies involved are far lower and the basis in which they are represented is different.
+                # While it makes perfect sense to use e.g. “mrcalc DWI.mif 0.0 -max” to clamp negative DWI intensities at zero, that doesn’t actually resolve this specific issue
+                # As I am fitting with SHORE, this issue will be resolved.
 
-            mrcat -axis 3 $DWI_VOLUME_List1 "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}.nii.gz" -force -quiet
-            mrcat -axis 3 $DWI_VOLUME_List2 "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE2_SliceDupTopup_${DIRSORDER}.nii.gz" -force -quiet
+                mrconvert "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}.nii.gz" - -stride "$STRIDES" | mrcalc - 0.0 -max "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}.nii.gz"  -force
+                mrconvert "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE2_SliceDupTopup_${DIRSORDER}.nii.gz" - -stride "$STRIDES" | mrcalc - 0.0 -max "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE2_SliceDupTopup_${DIRSORDER}.nii.gz"  -force
 
-            # topup (and utilisation of its field estimate in eddy) can indeed produce negative output values despite non-negative input values.
-            # This occurs if the estimated susceptibility field is non-diffeomorphic (whether or not the actual distortions are diffeomorphic),
-            # which leads to negative values of the Jacobian. The other corrections performed within eddy are pretty much guaranteed to not
-            # produce this effect as the spatial frequencies involved are far lower and the basis in which they are represented is different.
-            # While it makes perfect sense to use e.g. “mrcalc DWI.mif 0.0 -max” to clamp negative DWI intensities at zero, that doesn’t actually resolve this specific issue
-            # As I am fitting with SHORE, this issue will be resolved.
-
-            mrconvert "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}.nii.gz" - -stride "$STRIDES" | mrcalc - 0.0 -max "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE1_SliceDupTopup_${DIRSORDER}.nii.gz"  -force
-            mrconvert "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE2_SliceDupTopup_${DIRSORDER}.nii.gz" - -stride "$STRIDES" | mrcalc - 0.0 -max "${DISTORTIONCO_DIR}/TOPUP/dwidc_TE2_SliceDupTopup_${DIRSORDER}.nii.gz"  -force
+            fi # end of check-for-output 
 
         fi
 
