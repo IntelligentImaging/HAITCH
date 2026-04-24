@@ -14,7 +14,7 @@
 
 show_help () {
 cat << EOF
-    USAGE: sh ${0##*/} [project directory]
+    USAGE: sh ${0##*/} [-i] [-n] [-d] [-l] -- [project directory]
     This script starts the FEDI pipeline. Supply the project directory.
     data, protocols, and scripts directories specified in script.
 
@@ -113,9 +113,11 @@ fi
 
 let xcount=0
 for RUNDIR in ${ALLRUNS[@]} ; do
-	# Match t2 recon and registration methods to current csv row
-	export T2W_RECON_METHOD=${T2_RECON_METHOD_ar[$xcount]}
-	export REGSTRAT=${REGSTRAT_ar[$xcount]}
+	if [[ -n $INLIST ]] ; then
+		# Match t2 recon and registration methods to current csv row
+		export T2W_RECON_METHOD=${T2_RECON_METHOD_ar[$xcount]}
+		export REGSTRAT=${REGSTRAT_ar[$xcount]}
+	fi
 	((xcount++)) # increment array
 
 	if [ -d $RUNDIR ] ; then

@@ -57,7 +57,7 @@ echo $NVOLUMES_PER_TE
 echo -e "n\Split 4D volume into 3D volumes"
 for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
 
-    mrconvert -coord 3 $VNUM "$DMRI" "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz" -quiet
+    mrconvert -coord 3 $VNUM "$DMRI" "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}.nii.gz" -quiet -force
 
 done
 
