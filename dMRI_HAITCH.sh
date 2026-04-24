@@ -2119,18 +2119,26 @@ else
     echo "Step $STEPX locked or not set to TODO. Moving on."
 fi
 
-echo "Exporting pipeline outputs"
-for output in ${TENFOD_TRACT_DIR}/tensor.nii.gz ${TENFOD_TRACT_DIR}/fac.nii ${PRPROCESSING_DIR}/spred_xfm_sk.mif ; do
-    if [[ ! -f $output ]] ; then
-        echo "Pipeline product file ${output} not found"
-    fi
-done
+if [[ ! -f ${TENFOD_TRACT_DIR}/tensor.nii.gz || ! -f ${TENFOD_TRACT_DIR}/fac.nii || -f ${PRPROCESSING_DIR}/spred_xfm_sk.mif ]] ; then
 
-cp "${TENFOD_TRACT_DIR}/tensor.nii.gz" -v ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-tensor.nii.gz
-cp "${TENFOD_TRACT_DIR}/fac.nii" -v ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-fac.nii.gz
-mrconvert "${PRPROCESSING_DIR}/spred_xfm_sk.mif" -stride -1,2,3,4 -export_grad_fsl \
-    ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvecs \
-    ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvals \
-    ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-spred.nii.gz -force
+    echo "Pipeline product files not found"
+
+else
+
+    if [[ -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-tensor.nii.gz && -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-fac.nii.gz && -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvecs && -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvals && -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-spred.nii.gz && $NOOVER = 1 ]] ; then
+        echo "Files already exported"
+    else
+
+        echo "Exporting pipeline results to outputs folder"
+        cp "${TENFOD_TRACT_DIR}/tensor.nii.gz" -v ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-tensor.nii.gz
+        cp "${TENFOD_TRACT_DIR}/fac.nii" -v ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-fac.nii.gz
+        mrconvert "${PRPROCESSING_DIR}/spred_xfm_sk.mif" -stride -1,2,3,4 -export_grad_fsl \
+            ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvecs \
+            ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvals \
+            ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-spred.nii.gz -force
+    fi
+
+fi
+done
 
 echo "Pipleine script complete!"

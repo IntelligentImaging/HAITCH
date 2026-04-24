@@ -79,6 +79,8 @@ for OUTPATHSUB in "${PATHSUBS}" ; do
 	if [[ $delprep = 1 ]] ; then
 		rm -v ${PRPROCESSING_DIR}/*
 	fi
+	rm -v ${PRPROCESSING_DIR}/seg_tmp/*
+	rm -v ${TENFOD_TRACT_DIR}/seg_tmp/*
 
 	rm -v ${MOTIONCORREC_DIR}/spred{0,1,2,3,4}.nii.gz
 	rm -v ${MOTIONCORREC_DIR}/spred?_GMM.nii.gz
