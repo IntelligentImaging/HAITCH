@@ -23,13 +23,13 @@ declare -A FEDI_DMRI_PIPELINE_STEPS=(
 export T2W_DATA="protocols/t2w"
 
 # Set the default T2 reconstruction pipeline output to "niftymic" or "SVRTK"
-if [[ ! -n T2W_RECON_METHOD ]] ; then
+if [[ ! -n $T2W_RECON_METHOD ]] ; then
   #export T2W_RECON_METHOD="niftymic"
   export T2W_RECON_METHOD="SVRTK"
 fi
 
 # Set the default dwi-to-T2 registration method
-if [[ ! -n REGSTRAT ]] ; then
+if [[ ! -n $REGSTRAT ]] ; then
   export REGSTRAT="flirt"
   #export REGSTRAT="ants"
   #export REGSTRAT="manual"
