@@ -2121,7 +2121,7 @@ echo "--------------------------------------------------------------------------
 echo "Ultimate Step |---> Export Results"
 
 
-if [[ ! -f ${TENFOD_TRACT_DIR}/tensor.nii.gz || ! -f ${TENFOD_TRACT_DIR}/fac.nii || -f ${PRPROCESSING_DIR}/spred_xfm_sk.mif ]] ; then
+if [[ ! -f ${TENFOD_TRACT_DIR}/tensor.nii.gz || ! -f ${TENFOD_TRACT_DIR}/fac.nii || ! -f ${PRPROCESSING_DIR}/spred_xfm_sk.mif ]] ; then
     echo "Pipeline product files not found, cannot export"
 else
 
