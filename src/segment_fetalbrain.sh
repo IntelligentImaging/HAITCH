@@ -160,6 +160,8 @@ for ((VNUM=0; VNUM<${NVOLUMES_PER_TE}; VNUM++)); do
     mrcalc "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" "${SEG_TMP_DIR}/working_TE${NUMBER_ECHOTIME}_v${VNUM}_mask.nii.gz" -max "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" -force  -quiet
 done
 
+rm -v ${SEG_TMP_DIR}/working*z
+
 mrconvert "${SEG_TMP_DIR}/union_mask_TE${NUMBER_ECHOTIME}.mif" "$MASK" -force -quiet
 
 mrcalc "$DMRI" "$MASK" -multiply "$DMRISK" -force -quiet
