@@ -2093,14 +2093,17 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP10_TSOR_RESP_FOD_TRACTOG"]}  == "TODO" ]] 
 
 		    # ${SRC}/convert_tck_trk.py -o tck_2_trk -t "${TENFOD_TRACT_DIR}/tractography.tck" -a "${TENFOD_TRACT_DIR}/tensor.nii.gz"
 
-        fi
+        fi # choose single-shell or multi-shell method
+    fi # check for output
+
+else
+    echo "Step $STEPX locked or not set to TODO. Moving on."
+fi # check for TODO / prior step
 
 
 ((STEPX++))
 echo "---------------------------------------------------------------------------------"
 # STEP 11: STEP11_ADVANCED_FETAL_TRACTO
-
-
 if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP11_ADVANCED_FETAL_TRACTO"]}  == "TODO" ]]; then
 
     python fetal_tract/advanced_fetal_tractography.py \
@@ -2114,15 +2117,12 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP11_ADVANCED_FETAL_TRACTO"]}  == "TODO" ]];
 
 fi
 
-    fi
-else
-    echo "Step $STEPX locked or not set to TODO. Moving on."
-fi
+echo "---------------------------------------------------------------------------------"
+echo "Ultimate Step |---> Export Results"
+
 
 if [[ ! -f ${TENFOD_TRACT_DIR}/tensor.nii.gz || ! -f ${TENFOD_TRACT_DIR}/fac.nii || -f ${PRPROCESSING_DIR}/spred_xfm_sk.mif ]] ; then
-
-    echo "Pipeline product files not found"
-
+    echo "Pipeline product files not found, cannot export"
 else
 
     if [[ -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-tensor.nii.gz && -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-fac.nii.gz && -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvecs && -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}.bvals && -f ${OUTPUT_FILES_DIR}/${FULLSUBJECTID}_desc-spred.nii.gz && $NOOVER = 1 ]] ; then
@@ -2139,6 +2139,5 @@ else
     fi
 
 fi
-done
 
-echo "Pipleine script complete!"
+echo "Pipleine script complete! $OUTPATHSUB"
