@@ -55,10 +55,11 @@ prot=$1
 if [[ $RUNMODE = 1 ]] ; then
 	PATHSUBS=${prot}
 else
-	PATHSUBS=`find ${prot} -mindepth 3 -maxdepth 3 -type d -name \*_run_\*`
-fi 
+	PATHSUBS=`find ${prot} -mindepth 3 -maxdepth 3 -type d -name \*_run\*`
+fi
+if [[ ! -n $PATHSUBS ]] ; then die 'pipeline folder not found' ; fi
 
-for OUTPATHSUB in "${PATHSUBS}" ; do
+for OUTPATHSUB in ${PATHSUBS} ; do
 	echo cleaning big files from $OUTPATHSUB
 
 	# Step folder locations
@@ -92,7 +93,7 @@ for OUTPATHSUB in "${PATHSUBS}" ; do
 
 	rm -v ${SLICEWEIGHTS_DIR}/*
 
-	rm -rfv ${TENFOD_TRACT_DIR}/seg_tmp
+	rm -v ${TENFOD_TRACT_DIR}/seg_tmp/*
 
 	rm -v ${OUTPATHSUB}/tmp/*
 done
