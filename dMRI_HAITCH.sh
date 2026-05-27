@@ -488,7 +488,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP4_FETAL_BRAIN_EXTRACTION"]}  == "TODO" ]] 
 
             if [[ $SING = 1 ]] ; then
                 echo Running dmri3d container with singularity
-                singularity exec docker://fetalbet-model /bin/bash -c "python /app/src/codes/inference.py --data_path ${OUTPATHSUB}/segmentation/${segin}/ --save_path ${OUTPATHSUB}/segmentation/${segout}/ --saved_model_path /app/src/model/AttUNet.pth"
+                singularity exec docker://arfentul/fetalbet-model:first /bin/bash -c "python /app/src/codes/inference.py --data_path ${OUTPATHSUB}/segmentation/${segin}/ --save_path ${OUTPATHSUB}/segmentation/${segout}/ --saved_model_path /app/src/model/AttUNet.pth"
             else
 
                 echo "Pulling fetal-bet docker container"

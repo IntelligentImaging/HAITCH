@@ -17,7 +17,7 @@ declare -A FEDI_DMRI_PIPELINE_STEPS=(
 )
 
 # Tell HAITCH where to find processed T2 data including t2 to atlas registrations
-# requires $T2W_DATA/subj/scan/struct/subj_scan_rec-SVRTK_t2w.nii.gz
+# requires $T2W_DATA/subj/scan/anat/subj_scan_rec-SVRTK_t2w.nii.gz
 # requires $T2W_DATA/subj/scan/xfm/subj_scan_rec-SVRTK_t2w-t2space.nii.gz
 # requires $T2W_DATA/subj/scan/xfm/subj_scan_rec-SVRTK_from-t2space_to-atlas.nii.gz
 export T2W_DATA="protocols/t2w"
