@@ -1751,7 +1751,8 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             echo "Start Reconstruction Iteration : $ITER"
             echo "=================================================================================================================="
             # # Outlier Detection
-            python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" \
+            echo Running outlier detection with container
+            singularity exec docker://arfentul/shard-recon:latest /bin/bash -c " python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" \
                                        --dmrigmm  "$WORKING_DMRI_GMM" \
                                        --bval "$BVALSTE" \
                                        --bvec "$BVECSTE" \
@@ -1764,7 +1765,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
                                        --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" \
                                        --spredgmm "${SPRED_GMM}" \
                                        --mask "$WORKING_DMRIMASK" \
-                                       --maskgmm "$WORKING_DMRIMASK_GMM"
+                                       --maskgmm "$WORKING_DMRIMASK_GMM" "
 
             echo "=================================================================================================================="
             # Select weighting method
