@@ -1752,20 +1752,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             echo "=================================================================================================================="
             # # Outlier Detection
             echo Running outlier detection with container
-            singularity exec docker://arfentul/shard-recon:latest /bin/bash -c " python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" \
-                                       --dmrigmm  "$WORKING_DMRI_GMM" \
-                                       --bval "$BVALSTE" \
-                                       --bvec "$BVECSTE" \
-                                       --outpath "${SLICEWEIGHTS_DIR}" \
-                                       --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" \
-                                       --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" \
-                                       --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" \
-                                       --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" \
-                                       --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" \
-                                       --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" \
-                                       --spredgmm "${SPRED_GMM}" \
-                                       --mask "$WORKING_DMRIMASK" \
-                                       --maskgmm "$WORKING_DMRIMASK_GMM" "
+            singularity exec docker://arfentul/shard-recon:latest /bin/bash -c " python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" --spredgmm "${SPRED_GMM}" --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM" "
 
             echo "=================================================================================================================="
             # Select weighting method
