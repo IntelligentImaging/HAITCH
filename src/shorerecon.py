@@ -172,6 +172,8 @@ for indxslice in range(0,dmri.shape[2]):
 
 		# print("2. Fit the SHORE model to the data")
 		shore_fit = shore_model.fit(dmri_slice,mask_slice)
+		#shore_fit = shore_model.fit(dmri_slice,mask=mask_slice)
+
 
 		# print("3. Generate fitted model coefficients:")
 		shore_coeffs = shore_fit.shore_coeff
@@ -202,7 +204,8 @@ for indxslice in range(0,dmri.shape[2]):
 				# shore_model = ShoreModel(gtab_in,radial_order=radial_order, zeta=zeta, lambdaN=lambdaN, lambdaL=lambdaL, regularization="L2")
 
 				print("Fit the SHORE model to the data")
-				shore_fit = shore_model.fit(dmri_slice,mask_slice)
+				shore_fit = shore_model.fit(dmri_slice,mask=mask_slice)
+				#shore_fit = shore_model.fit(dmri_slice,mask_slice)
 
 				print("Generate the coffes of the fitted model:")
 				shore_coeffs = shore_fit.shore_coeff

@@ -1699,43 +1699,42 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
         for ((ITER=0; ITER<$EPOCHS; ITER++)); do
             ITERM=$((ITER-1))
 
-
             # AXIS SLICE is number 0 or 1.
             echo "=================================================================================================================="
             echo "Reorient data for GMM slice weighting : $ITER"
             echo "=================================================================================================================="
 
 
-
+            #let AXSLICES=2 # Clemente added this as a work around, maybe it breaks something
+            echo "Applying Transformation Axis as Slice's Axis = $AXSLICES"
             if [[ $AXSLICES -eq "0" ]]; then
 
-                echo "Applying Transformation Axis as Slice's Axis = $AXSLICES"
-
-                echo "0 0  1 0
+                echo "0 0 1 0
                 1 0 0 0
-                0 1  0 0
-                0 0  0 1" > "${PRPROCESSING_DIR}/trans_axis0.txt"
+                0 1 0 0
+                0 0 0 1" > "${PRPROCESSING_DIR}/trans_axis0.txt"
 
                 mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${WORKING_DMRI}" "${WORKING_DMRI_GMM}" -force
                 mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${WORKING_DMRIMASK}" "${WORKING_DMRIMASK_GMM}" -force
+                SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}_GMM.nii.gz"
 
                 if [[ -e "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" ]]; then
 
-                    SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}_GMM.nii.gz"
                     mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" "${SPRED_GMM}" -force
                 fi
             elif [[ $AXSLICES -eq "1" ]]; then
-                echo "Applying Transformation Axis as Slice's Axis = $AXSLICES"
-                echo "1 0  0 0
+
+                echo "1 0 0 0
                 0 0 -1 0
                 0 1  0 0
                 0 0  0 1" > "${PRPROCESSING_DIR}/trans_axis1.txt"
 
                 mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${WORKING_DMRI}" "${WORKING_DMRI_GMM}" -force
                 mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${WORKING_DMRIMASK}" "${WORKING_DMRIMASK_GMM}" -force
+                SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}_GMM.nii.gz"
+
                 if [[ -e "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" ]]; then
 
-                    SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}_GMM.nii.gz"
                     mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" "${SPRED_GMM}" -force
                 fi
 
@@ -1743,7 +1742,6 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
                 WORKING_DMRI_GMM=${WORKING_DMRI}
                 WORKING_DMRIMASK_GMM=${WORKING_DMRIMASK}
                 SPRED_GMM="${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz"
-
             fi
 
 
@@ -1751,16 +1749,25 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             echo "Start Reconstruction Iteration : $ITER"
             echo "=================================================================================================================="
             # # Outlier Detection
-            echo Running outlier detection with container
-            singularity exec docker://arfentul/shard-recon:latest /bin/bash -c " python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" --spredgmm "${SPRED_GMM}" --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM" "
+            echo "command: python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" --spredgmm "${SPRED_GMM}" --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM" "
+            #echo Running outlier detection with container
+            #singularity exec docker://arfentul/shard-recon:latest /bin/bash -c " python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" --spredgmm "${SPRED_GMM}" --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM" "
+            echo "(original) script outlier detection"
+            python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" \
+                --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" \
+                --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" \
+                --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" \
+                --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" --spredgmm "${SPRED_GMM}" \
+                --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM"
 
             echo "=================================================================================================================="
+
             # Select weighting method
             if [ $ITER -eq 0 ]; then # Initialization
 
                 SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fsliceweights_mzscore_${ITER}.txt"
                 echo "Modfied Zscore (slice-wise) weights will be used."
-            elif [[ $ITER -eq 98 ]]; then # Final iteration - alternative option for final weighting
+            elif [[ $ITER -eq 98 ]]; then # # not used - Final iteration - alternative option for final weighting
             #elif [[ $ITER -eq $((EPOCHS - 1)) ]]; then # This would replace the final iteration weighting method
 
                 ITERSPECIAL=1
@@ -1774,7 +1781,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
 
             elif [[ $ITER -eq 99 ]]; then # # not used - alternative option for final weighting
 
-                SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fvoxelweights_shore_${ITER}.nii.gz"
+                SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fvoxelweights_shore_${ITERM}.nii.gz"
                     echo "Shore-based (voxel-wise) weights will be used."
 
             else # default weighting after the initial step
