@@ -1709,10 +1709,10 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             echo "Applying Transformation Axis as Slice's Axis = $AXSLICES"
             if [[ $AXSLICES -eq "0" ]]; then
 
-                echo "0 0 1 0
-                1 0 0 0
-                0 1 0 0
-                0 0 0 1" > "${PRPROCESSING_DIR}/trans_axis0.txt"
+                echo "0 0 1 0" > "${PRPROCESSING_DIR}/trans_axis0.txt"
+                echo "1 0 0 0" >> "${PRPROCESSING_DIR}/trans_axis0.txt"
+                echo "0 1 0 0" >> "${PRPROCESSING_DIR}/trans_axis0.txt"
+                echo "0 0 0 1" >> "${PRPROCESSING_DIR}/trans_axis0.txt"
 
                 mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${WORKING_DMRI}" "${WORKING_DMRI_GMM}" -force
                 mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis0.txt" "${WORKING_DMRIMASK}" "${WORKING_DMRIMASK_GMM}" -force
@@ -1724,10 +1724,10 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
                 fi
             elif [[ $AXSLICES -eq "1" ]]; then
 
-                echo "1 0 0 0
-                0 0 -1 0
-                0 1  0 0
-                0 0  0 1" > "${PRPROCESSING_DIR}/trans_axis1.txt"
+                echo "1 0 0 0" > "${PRPROCESSING_DIR}/trans_axis1.txt"
+                echo "0 0 -1 0" >> "${PRPROCESSING_DIR}/trans_axis1.txt"
+                echo "0 1 0 0" >> "${PRPROCESSING_DIR}/trans_axis1.txt"
+                echo "0 0 0 1" >> "${PRPROCESSING_DIR}/trans_axis1.txt"
 
                 mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${WORKING_DMRI}" "${WORKING_DMRI_GMM}" -force
                 mrtransform -linear  "${PRPROCESSING_DIR}/trans_axis1.txt" "${WORKING_DMRIMASK}" "${WORKING_DMRIMASK_GMM}" -force
@@ -1749,9 +1749,24 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
             echo "Start Reconstruction Iteration : $ITER"
             echo "=================================================================================================================="
             # # Outlier Detection
-            echo "command: python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" --spredgmm "${SPRED_GMM}" --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM" "
+            echo "command: python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" \
+                --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" \
+                --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" \
+                --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" \
+                --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" --spredgmm "${SPRED_GMM}" \
+                --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM" "
+
             #echo Running outlier detection with container
-            #singularity exec docker://arfentul/shard-recon:latest /bin/bash -c " python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITER}.nii.gz" --spredgmm "${SPRED_GMM}" --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM" "
+            #singularity exec docker://arfentul/shard-recon:latest /bin/bash -c " python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" \
+            #    --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" \
+            #    --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" \
+            #    --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" \
+            #    --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" --spredgmm "${SPRED_GMM}" \
+            #    --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM" "
+
+            #echo Running outlier detection with container SINGLE LINE
+            #singularity exec docker://arfentul/shard-recon:latest /bin/bash -c " python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" --fsliceweights_mzscore  "fsliceweights_mzscore_${ITER}.txt" --fsliceweights_angle_neighbors "fsliceweights_angle_neighbors_${ITER}.txt" --fsliceweights_corre_neighbors "fsliceweights_corre_neighbors_${ITER}.txt" --fsliceweights_gmmodel "fsliceweights_gmmodel_${ITER}.txt" --fvoxelweights_shorebased "fvoxelweights_shore_${ITER}.nii.gz" --spred "${MOTIONCORREC_DIR}/spred${ITERM}.nii.gz" --spredgmm "${SPRED_GMM}" --mask "$WORKING_DMRIMASK" --maskgmm "$WORKING_DMRIMASK_GMM" "
+
             echo "(original) script outlier detection"
             python ${SRC}/outlierdetection.py --dmri  "$WORKING_DMRI" --dmrigmm  "$WORKING_DMRI_GMM" \
                 --bval "$BVALSTE" --bvec "$BVECSTE" --outpath "${SLICEWEIGHTS_DIR}" \

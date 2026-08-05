@@ -510,9 +510,9 @@ def gmm_weighting(fdmri, fspred, mask, bvals, bvecs, outpath, filename_gmm):
         fdmri,
         fspred,
         os.path.join(outpath, filename_gmm),
-        '-force', 
-        '-quiet'
+        '-force', #'-quiet'
     ]
+    print(command)
 
     # Execute the command
     #  print("GMM command: ",command)
