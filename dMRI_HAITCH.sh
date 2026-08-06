@@ -1796,7 +1796,7 @@ if [[ ${FEDI_DMRI_PIPELINE_STEPS["STEP8_3DSHORE_RECONSTRUCTION"]}  == "TODO" ]] 
 
             elif [[ $ITER -eq 99 ]]; then # # not used - alternative option for final weighting
 
-                SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fvoxelweights_shore_${ITERM}.nii.gz"
+                SHOREWEIGHTING="${SLICEWEIGHTS_DIR}/fvoxelweights_shore_${ITER}.nii.gz"
                     echo "Shore-based (voxel-wise) weights will be used."
 
             else # default weighting after the initial step
