@@ -510,9 +510,9 @@ def gmm_weighting(fdmri, fspred, mask, bvals, bvecs, outpath, filename_gmm):
         fdmri,
         fspred,
         os.path.join(outpath, filename_gmm),
-        '-force', 
-        '-quiet'
+        '-force', #'-quiet'
     ]
+    print(command)
 
     # Execute the command
     #  print("GMM command: ",command)
@@ -616,7 +616,11 @@ if mask is not None:
 
 if args.fsliceweights_gmmodel is not None and fspred is not None:
 
+    print('Doing FSL slice weights GMM model')
     gmm_weighting(fdmri=fdmrigmm, fspred=fspredgmm, mask=maskgmm, bvals=fbval, bvecs=fbvec, outpath=outpath, filename_gmm=args.fsliceweights_gmmodel)
+else:
+    print('Not doing FSL slice weights GMM model')
+
 
 if args.fsliceweights_mzscore is not None:
     if fspred is not None:
