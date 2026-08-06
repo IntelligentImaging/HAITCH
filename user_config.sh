@@ -49,5 +49,7 @@ export DISTORTIONCORRECTION_WAY="CLASSIC"
 # Choose whether to use singularity instead of docker for segmentation containers
 export SING=1
 #export SING=0
-
 # SEGMENTATION_DIR files are last references in STEP 6
+
+# Uncomment this line to use a containerized version of SHARD recon for dwisliceoutliergmm (not thoroughly tested)
+#export SHARDCON=1
