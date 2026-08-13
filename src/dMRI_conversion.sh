@@ -21,7 +21,7 @@ while getopts ":hi:o:s:v:" opt; do
       echo
       echo "    <input_dcm_dir> should be the scan folder with multiple DICOM series in subfolders"
       echo "    <output_dir> is the study setup folder, probably 'data'"
-      echo "    <study_id> subject identifier - do not include 'sub-', the script will add this string"
+      echo "    <study_id> subject identifier"
       echo "    <visit_id> for example, 's1'"
       exit 0
       ;;
