@@ -60,10 +60,6 @@ while getopts "d:p:i:m:r:o:s:c:g:l:" opt; do
         s)
             SESSION="$OPTARG"
             ;;
-
-        g)
-	       REGSTRAT="$OPTARG"
-	       ;;
 	    l)
 	       NOLOCKS="$OPTARG"
 	       ;;
@@ -86,7 +82,7 @@ if [[ -z "${PROJDIR}" || -z "${SUBJECTID}" || -z "${SESSION}" || -z "${MODALITY}
     usage
 fi
 
-FULLSUBJECTID="${SUBJECTID}_${SESSION}_${MODALITY}"
+FULLSUBJECTID="${SESSION}_${RUNNUMBER}"
 
 # Generate the configuration content
 cat > "${CONFIG_FILE}" <<EOL
@@ -116,7 +112,7 @@ export DWISESSION="${SESSION}"
 export RUNNUM="${RUNNUMBER}"
 export MCMETHOD="${PROTOCOL}"
 
-export FULLSUBJECTID="${SUBJECTID}_${SESSION}_${MODALITY}"
+export FULLSUBJECTID="${SESSION}_${RUNNUMBER}"
 
 export PROJDIR="${PROJDIR}"
 export DMRISCRIPTS="${DMRISCRIPTS}"
@@ -124,19 +120,19 @@ export DMRISCRIPTS="${DMRISCRIPTS}"
 export SRC="\${DMRISCRIPTS}/src"
 export REFS="\${DMRISCRIPTS}/refs"
 export TMPDIR="\${PROJDIR}/tmp"
-export INPATH="\${PROJDIR}/data"
-export OUTPATH="\${INPATH}/protocols"
+export INPATH="\${PROJDIR}/clem"
+export OUTPATH="\${PROJDIR}/clem"
 
-export INPATHSUB="\${INPATH}/${SUBJECTID}/${SUBJECTID}_${SESSION}/${MODALITY}"
-export OUTPATHSUB="\${INPATHSUB}"
+export INPATHSUB="\${INPATH}/${SUBJECTID}/${SESSION}/${RUNNUMBER}"
+export OUTPATHSUB="\${OUTPATH}/${SUBJECTID}/${SESSION}/${RUNNUMBER}"
 
 export REGSTRAT="${REGSTRAT}"
 export NOLOCKS="${NOLOCKS}"
-export BVALS="\${INPATHSUB}/${FULLSUBJECTID}.bval"
-export BVECS="\${INPATHSUB}/${FULLSUBJECTID}.bvec"
-export BVALSTE="\${INPATHSUB}/${FULLSUBJECTID}_TE.bval"
-export BVECSTE="\${INPATHSUB}/${FULLSUBJECTID}_TE.bvec"
-export GRAD4CLS="\${INPATHSUB}/${FULLSUBJECTID}.txt"
+export BVALS="\${INPATHSUB}/${FULLSUBJECTID}.bvals"
+export BVECS="\${INPATHSUB}/${FULLSUBJECTID}.bvecs"
+export BVALSTE="\${INPATHSUB}/${FULLSUBJECTID}_TE.bvals"
+export BVECSTE="\${INPATHSUB}/${FULLSUBJECTID}_TE.bvecs"
+export GRAD4CLS="\${INPATHSUB}/${FULLSUBJECTID}_grad_mrtrix.txt"
 export GRAD4CLSTE="\${INPATHSUB}/${FULLSUBJECTID}_grad_mrtrix_TE.txt"
 export GRAD5CLS="\${INPATHSUB}/${FULLSUBJECTID}_grad5cls_mrtrix.txt"
 export INDX="\${INPATHSUB}/${FULLSUBJECTID}_index_mrtrix.txt"
